@@ -555,6 +555,7 @@
         const typingSpeed = 55;
         const interLinePause = 700;
         const preButtonPause = 1000;
+        let onboardingStartedAt = 0;
 
         function typeCharacter() {
             if (currentParagraphIndex >= onboardingLines.length) {
@@ -1632,9 +1633,19 @@
             onboardingScreen.removeEventListener('click', initialUserGesture);
             onboardingScreen.classList.add('no-cursor');
             console.log('Initial click on onboarding screen registered.');
+            onboardingStartedAt = performance.now();
             await initOnboardingAudio();
             typeCharacter();
         }, { once: true });
+
+        setInterval(() => {
+            if (!gameStarted && onboardingStartedAt > 0 && !beginRestorationButton.classList.contains('visible')) {
+                const elapsed = performance.now() - onboardingStartedAt;
+                if (elapsed > 8000) {
+                    beginRestorationButton.classList.add('visible');
+                }
+            }
+        }, 1000);
     </script>
 </body>
 </html>
