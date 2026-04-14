@@ -378,6 +378,35 @@
         #dynamicMessageOverlay.visible {
             opacity: 1;
         }
+        #tapToContinueOverlay {
+            position: absolute;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(120deg, rgba(6, 8, 16, 0.82), rgba(12, 8, 18, 0.82));
+            z-index: 40;
+            pointer-events: auto;
+        }
+        #tapToContinueOverlay.visible {
+            display: flex;
+        }
+        #tapToContinueOverlay .tap-card {
+            padding: 18px 26px;
+            border-radius: 14px;
+            background: rgba(12, 16, 28, 0.9);
+            border: 1px solid rgba(160, 170, 255, 0.2);
+            color: #f4f7ff;
+            font-size: 16px;
+            letter-spacing: 0.4px;
+            text-shadow: 0 0 16px rgba(69, 243, 255, 0.35);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.45), 0 0 25px rgba(255,79,216,0.2);
+            animation: tapPulse 1.6s ease-in-out infinite;
+        }
+        @keyframes tapPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+        }
     </style>
 </head>
 <body>
@@ -415,6 +444,9 @@
             <button id="beginRestorationButton">Learn About Fruits</button> 
             <button id="startGameButton" class="hidden">Start Game</button>
         </div>
+        <div id="tapToContinueOverlay">
+            <div class="tap-card">Tap to continue</div>
+        </div>
         <canvas id="gameCanvas"></canvas>
         <div id="uiOverlay">
             <div id="messageDisplayContainer"> 
@@ -441,6 +473,7 @@
         const startGameButton = document.getElementById('startGameButton');
         const uiOverlay = document.getElementById('uiOverlay');
         const dynamicMessageOverlay = document.getElementById('dynamicMessageOverlay');
+        const tapToContinueOverlay = document.getElementById('tapToContinueOverlay');
 
         const INFO_BAND_HEIGHT = 50; 
         const gameContainer = document.getElementById('gameContainer');
@@ -556,6 +589,20 @@
         const interLinePause = 700;
         const preButtonPause = 1000;
         let onboardingStartedAt = 0;
+        let onboardingEscalated = false;
+
+        function showTapToContinue() {
+            onboardingEscalated = true;
+            if (tapToContinueOverlay) {
+                tapToContinueOverlay.classList.add('visible');
+            }
+        }
+
+        function hideTapToContinue() {
+            if (tapToContinueOverlay) {
+                tapToContinueOverlay.classList.remove('visible');
+            }
+        }
 
         function typeCharacter() {
             if (currentParagraphIndex >= onboardingLines.length) {
@@ -724,6 +771,7 @@
         }
 
         beginRestorationButton.addEventListener('click', () => {
+            hideTapToContinue();
             typewriterContainer.classList.add('hidden');
             beginRestorationButton.classList.remove('visible');
             beginRestorationButton.classList.add('hidden');
@@ -739,6 +787,7 @@
         });
 
         startGameButton.addEventListener('click', () => {
+            hideTapToContinue();
             onboardingScreen.classList.add('fade-out');
             initGameAudio().then(() => {
                 gameStarted = true;
@@ -1643,9 +1692,22 @@
                 const elapsed = performance.now() - onboardingStartedAt;
                 if (elapsed > 8000) {
                     beginRestorationButton.classList.add('visible');
+                    showTapToContinue();
                 }
             }
         }, 1000);
+
+        if (tapToContinueOverlay) {
+            tapToContinueOverlay.addEventListener('click', () => {
+                if (!gameStarted && onboardingStartedAt > 0) {
+                    beginRestorationButton.classList.add('visible');
+                    if (beginRestorationButton.classList.contains('hidden')) {
+                        beginRestorationButton.classList.remove('hidden');
+                    }
+                    hideTapToContinue();
+                }
+            });
+        }
     </script>
 </body>
 </html>
