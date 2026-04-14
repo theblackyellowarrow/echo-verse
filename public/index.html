@@ -182,6 +182,14 @@
             padding: 0; 
             text-transform: uppercase;
         }
+        #scoreDisplay.flash {
+            animation: scoreFlash 0.4s steps(2, end);
+        }
+        @keyframes scoreFlash {
+            0% { color: #ffd86b; }
+            50% { color: #ffffff; }
+            100% { color: #ffd86b; }
+        }
         #streakDisplay {
             font-size: 12px;
             line-height: 1.2;
@@ -680,7 +688,12 @@
         var endLoopInstance = null;
         let currentBirdIntervalTime = 7500;
 
-        const onboardingLines = ['A corrupt AI broke this digital forest.','Collect Resonance Fruits to restore it.','Dodge Wisps and dash (Space) to survive.'];
+        const onboardingLines = [
+            'A corrupt AI broke this digital forest.',
+            'Collect Resonance Fruits to restore it.',
+            'Cyan glyphs are forest paths, not fruit.',
+            'Dodge Wisps and dash (Space) to survive.'
+        ];
         let currentParagraphIndex = 0;
         let currentCharIndex = 0;
         const typingSpeed = 25;
@@ -1313,13 +1326,13 @@
             const clG = Math.round(initialCanopyLight[1] - (initialCanopyLight[1] - finalCanopyLight[1]) * progression);
             const clB = Math.round(initialCanopyLight[2] - (initialCanopyLight[2] - finalCanopyLight[2]) * progression);
             const canopyColor1 = `rgb(${clR},${clG},${clB})`;
-            const pathfinderBaseColor = `rgba(${100 + 40 * progression}, ${120 + 60 * progression}, ${100 + 40 * progression}, 1)`;
-            const pathfinderGlow = `rgba(${140 + 40 * progression}, ${180 + 40 * progression}, ${140 + 40 * progression}, ${0.25 + Math.sin(glowPhase + Date.now() / 450) * 0.2})`;
+            const pathfinderBaseColor = `rgba(${70 + 30 * progression}, ${120 + 40 * progression}, ${90 + 25 * progression}, 1)`;
+            const pathfinderGlow = `rgba(${90 + 30 * progression}, ${150 + 30 * progression}, ${110 + 25 * progression}, ${0.12 + Math.sin(glowPhase + Date.now() / 450) * 0.08})`;
             if (type === 'pathfinder') {
                 ctx.fillStyle = pathfinderBaseColor;
                 if (layer < maxForestLayer) {
                     ctx.shadowColor = pathfinderGlow;
-                    ctx.shadowBlur = 18 + Math.sin(glowPhase + Date.now() / 450) * 6;
+                    ctx.shadowBlur = 8 + Math.sin(glowPhase + Date.now() / 450) * 3;
                 }
             } else {
                 ctx.shadowBlur = 0;
@@ -1435,6 +1448,13 @@
                 dynamicMessageOverlay.classList.remove('visible');
             }, duration);
         }
+        
+        function flashScore() {
+            if (!scoreDisplay) return;
+            scoreDisplay.classList.remove('flash');
+            void scoreDisplay.offsetWidth;
+            scoreDisplay.classList.add('flash');
+        }
 
         function getLoreFragment() {
             if (loreFragments.length > 0) {
@@ -1460,7 +1480,7 @@
             for (let i = fruits.length - 1; i >= 0; i--) {
                 const fruit = fruits[i];
                 const dist = Math.hypot(player.x - fruit.x, player.y - fruit.y);
-                if (dist < player.radius + fruitRadius) {
+                if (dist < player.radius + fruitRadius + 6) {
                     fruits.splice(i, 1);
                     if (comboTimer > 0) {
                         comboCount = Math.min(10, comboCount + 1);
@@ -1471,6 +1491,8 @@
                     const comboBonus = Math.min(maxComboBonus, (comboCount - 1) * 0.12);
                     const gainedPoints = Math.max(1, Math.round(fruit.points * (1 + comboBonus)));
                     score += gainedPoints;
+                    flashScore();
+                    showDynamicMessage(`${fruit.name.toUpperCase()} +${gainedPoints}`, 1200);
                     if (score >= scoreAtChallengeStart + AI_CHALLENGE_POINTS_NEEDED) {
                         console.log('AI Challenge Met! Score:', score, 'Resetting timer and benchmark.');
                         aiChallengeTimer = AI_CHALLENGE_DURATION;
@@ -1497,13 +1519,14 @@
             }
             if (bonusFruit) {
                 const bonusDist = Math.hypot(player.x - bonusFruit.x, player.y - bonusFruit.y);
-                if (bonusDist < player.radius + bonusFruitRadius) {
+                if (bonusDist < player.radius + bonusFruitRadius + 6) {
                     bonusFruit = null;
                     riftCollected += 1;
                     comboTimer = comboWindow;
                     comboCount = Math.min(10, comboCount + 1);
                     score += 5;
-                    showDynamicMessage(`Rift fruit ${riftCollected}/${riftTargetCount}`, 1400);
+                    flashScore();
+                    showDynamicMessage(`BONUS +5 | RIFT ${riftCollected}/${riftTargetCount}`, 1400);
                     updateScoreDisplay();
                     if (riftCollected >= riftTargetCount) {
                         endRift(true);
