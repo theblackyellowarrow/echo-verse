@@ -4,7 +4,11 @@
   "private": true,
   "description": "Codex-ready project wrapper for the EchoVerse browser game.",
   "scripts": {
-    "start": "python3 -m http.server 3000 --directory public",
-    "dev": "python3 -m http.server 3000 --directory public"
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": "18.x",
+    "npm": "9.x"
   }
 }

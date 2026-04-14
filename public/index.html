@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Restore the EchoVerse in a fast, atmospheric browser game of resonance fruits, wisps, and corruption cycles.">
     <title>Whispering Woods: EchoVerse Restoration</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
     <style>
@@ -34,6 +35,10 @@
             color: var(--text-muted);
             overflow: hidden;
         }
+        button:focus-visible {
+            outline: 2px solid rgba(255, 216, 107, 0.9);
+            outline-offset: 2px;
+        }
         body::before,
         body::after {
             content: "";
@@ -52,6 +57,17 @@
         @keyframes drift {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+            body::before,
+            body::after {
+                animation: none !important;
+            }
         }
         #gameContainer {
             position: relative;
@@ -425,7 +441,7 @@
     </style>
 </head>
 <body>
-    <div id="gameContainer">
+        <div id="gameContainer" role="application" aria-label="EchoVerse game area">
         <div id="gameHeader">
             <div class="headerColumn">
                 <div id="scoreDisplay">Score: 0</div>
@@ -456,20 +472,20 @@
                     </div>
                 </div>
             </div>
-            <button id="beginRestorationButton">Learn About Fruits</button> 
-            <button id="startGameButton" class="hidden">Start Game</button>
-            <button id="skipIntroButton">Skip Intro</button>
+            <button id="beginRestorationButton" type="button">Learn About Fruits</button> 
+            <button id="startGameButton" class="hidden" type="button">Start Game</button>
+            <button id="skipIntroButton" type="button">Skip Intro</button>
         </div>
         <div id="tapToContinueOverlay">
             <div class="tap-card">Tap to continue</div>
         </div>
-        <canvas id="gameCanvas"></canvas>
+        <canvas id="gameCanvas" aria-label="EchoVerse playfield"></canvas>
         <div id="uiOverlay">
             <div id="messageDisplayContainer"> 
-                <div id="messageDisplay"></div>
-                <button id="restartGameButton">Restore More</button>
+                <div id="messageDisplay" role="status" aria-live="polite"></div>
+                <button id="restartGameButton" type="button">Restore More</button>
             </div>
-            <div id="dynamicMessageOverlay"></div> 
+            <div id="dynamicMessageOverlay" role="status" aria-live="polite"></div> 
         </div>
     </div>
     <script>
@@ -503,15 +519,26 @@
             let containerHeight = gameContainer.offsetHeight;
             gameHeight = containerHeight > INFO_BAND_HEIGHT ? containerHeight - INFO_BAND_HEIGHT : 550;
 
-            canvas.width = gameWidth;
-            canvas.height = gameHeight;
+            const dpr = Math.min(2, window.devicePixelRatio || 1);
+            canvas.width = Math.round(gameWidth * dpr);
+            canvas.height = Math.round(gameHeight * dpr);
+            canvas.style.width = `${gameWidth}px`;
+            canvas.style.height = `${gameHeight}px`;
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
             console.log('Game dimensions updated: Container WxH', containerWidth, containerHeight, 'Canvas WxH', gameWidth, gameHeight);
         }
         
         window.addEventListener('DOMContentLoaded', () => {
             updateGameDimensions();
         }); 
-        window.addEventListener('resize', updateGameDimensions);
+        let resizeRaf = null;
+        window.addEventListener('resize', () => {
+            if (resizeRaf) cancelAnimationFrame(resizeRaf);
+            resizeRaf = requestAnimationFrame(() => {
+                updateGameDimensions();
+                resizeRaf = null;
+            });
+        });
 
         var score = 0;
         var currentForestLayer = 1;
