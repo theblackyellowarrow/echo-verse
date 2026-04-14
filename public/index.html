@@ -1,0 +1,1640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whispering Woods: EchoVerse Restoration</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Rubik+Mono+One&display=swap');
+        :root {
+            --bg-deep: #05050a;
+            --bg-ink: #0b0c17;
+            --accent-pink: #ff4fd8;
+            --accent-cyan: #45f3ff;
+            --accent-lime: #9cff57;
+            --accent-gold: #ffd86b;
+            --glass: rgba(15, 18, 30, 0.72);
+            --glass-edge: rgba(160, 170, 255, 0.22);
+            --text-primary: #f3f6ff;
+            --text-muted: #b1b7d4;
+        }
+        body {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: radial-gradient(1200px 800px at 15% 10%, rgba(255, 79, 216, 0.12), transparent 60%),
+                        radial-gradient(1100px 900px at 90% 10%, rgba(69, 243, 255, 0.12), transparent 55%),
+                        radial-gradient(1200px 900px at 60% 90%, rgba(156, 255, 87, 0.08), transparent 55%),
+                        linear-gradient(160deg, var(--bg-deep), var(--bg-ink));
+            font-family: "Space Grotesk", "Segoe UI", sans-serif;
+            color: var(--text-muted);
+            overflow: hidden;
+        }
+        body::before,
+        body::after {
+            content: "";
+            position: absolute;
+            inset: -20%;
+            background: conic-gradient(from 180deg, rgba(255, 79, 216, 0.06), transparent 25%, rgba(69, 243, 255, 0.06), transparent 55%, rgba(156, 255, 87, 0.05));
+            filter: blur(30px);
+            opacity: 0.6;
+            animation: drift 18s linear infinite;
+            z-index: 0;
+        }
+        body::after {
+            animation-direction: reverse;
+            opacity: 0.35;
+        }
+        @keyframes drift {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        #gameContainer {
+            position: relative;
+            border: 1px solid var(--glass-edge);
+            box-shadow: 0 25px 80px rgba(0,0,0,0.6), 0 0 40px rgba(69, 243, 255, 0.12);
+            background: linear-gradient(180deg, rgba(10, 12, 22, 0.9), rgba(6, 7, 12, 0.95));
+            width: 100%;
+            max-width: 900px;
+            aspect-ratio: 800 / 600;
+            display: flex;
+            flex-direction: column;
+            border-radius: 22px;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        #gameHeader { 
+            width: 100%;
+            height: 50px; 
+            background: linear-gradient(120deg, rgba(18, 24, 44, 0.96), rgba(26, 12, 32, 0.96)); 
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            box-sizing: border-box;
+            border-bottom: 1px solid rgba(160, 170, 255, 0.2); 
+            z-index: 5; 
+        }
+        .headerColumn {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .headerColumn.headerRight {
+            align-items: flex-end;
+        }
+
+        canvas {
+            display: block;
+            background-color: transparent; 
+            width: 100%;
+            height: calc(100% - 50px);
+            opacity: 0; 
+            transition: opacity 1.2s ease-in 0.5s; 
+            position: relative; 
+        }
+        canvas.visible {
+            opacity: 1;
+        }
+
+        #uiOverlay {
+            position: absolute;
+            top: 50px;  
+            left: 0;
+            width: 100%;
+            height: calc(100% - 50px); 
+            pointer-events: none; 
+            opacity: 0; 
+            transition: opacity 1.2s ease-in 0.5s;
+            z-index: 10; 
+        }
+        #uiOverlay.visible {
+            opacity: 1;
+        }
+
+        #scoreDisplay {
+            font-size: 16px; 
+            line-height: 1.5;
+            color: var(--accent-gold); 
+            text-shadow: 0 0 12px rgba(255, 216, 107, 0.45); 
+            padding: 0; 
+        }
+        #streakDisplay {
+            font-size: 13px;
+            line-height: 1.2;
+            color: var(--accent-lime);
+            text-shadow: 0 0 12px rgba(156, 255, 87, 0.4);
+        }
+        #aiChallengeTimerDisplay {
+            font-size: 16px; 
+            line-height: 1.5;
+            color: #ff7b65; 
+            text-shadow: 0 0 12px rgba(255, 123, 101, 0.45);
+            padding: 0; 
+            display: block; 
+        }
+        #dashDisplay {
+            font-size: 13px;
+            line-height: 1.2;
+            color: var(--accent-cyan);
+            text-shadow: 0 0 12px rgba(69, 243, 255, 0.45);
+        }
+
+        #messageDisplayContainer { 
+            position: absolute;
+            top: 50%; 
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: none; 
+            flex-direction: column;
+            align-items: center;
+            background: linear-gradient(145deg, rgba(10, 12, 24, 0.88), rgba(18, 12, 24, 0.88)); 
+            padding: 30px;
+            border-radius: 16px;
+            text-shadow: 0 0 12px rgba(0,0,0,0.5); 
+            border: 1px solid rgba(160, 170, 255, 0.2);
+            box-shadow: 0 18px 45px rgba(0,0,0,0.6), 0 0 35px rgba(255,79,216,0.18);
+            z-index: 20; 
+            max-width: 80%; 
+        }
+        #messageDisplay {
+            font-size: 16px; 
+            line-height: 1.5;
+            color: #f5f5f5;
+            text-align: center;
+            margin-bottom: 25px; 
+        }
+        #restartGameButton {
+            background: linear-gradient(135deg, #ffd86b, #ff8ad8); 
+            color: #12131f; 
+            padding: 10px 20px; 
+            border: 2px solid rgba(255, 255, 255, 0.15); 
+            border-radius: 8px; 
+            font-size: 15px; 
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 0 18px rgba(255, 79, 216, 0.35), 0 8px 18px rgba(0,0,0,0.4);
+            transition: all 0.3s ease;
+            pointer-events: auto; 
+        }
+        #restartGameButton:hover {
+            background: linear-gradient(135deg, #fff0a6, #ffa4e5);
+            color: #0f111a;
+            border-color: rgba(255, 255, 255, 0.6); 
+            transform: translateY(-1px) scale(1.03);
+            box-shadow: 0 0 25px rgba(255,79,216,0.6), 0 10px 20px rgba(0,0,0,0.5);
+        }
+        
+        #onboardingScreen {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: radial-gradient(1200px 800px at 30% 20%, rgba(69, 243, 255, 0.18), transparent 60%),
+                        radial-gradient(1200px 900px at 80% 30%, rgba(255, 79, 216, 0.2), transparent 60%),
+                        linear-gradient(150deg, #061019, #060b10, #040408); 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center; 
+            text-align: center;
+            z-index: 30; 
+            padding: 30px;
+            box-sizing: border-box;
+            opacity: 1;
+            cursor: pointer; 
+        }
+        #onboardingScreen.fade-out {
+            opacity: 0 !important;
+            transition: opacity 1s ease-out 0.5s; 
+            pointer-events: none;
+        }
+         #onboardingScreen.no-cursor { 
+            cursor: default;
+        }
+        #onboardingScreen h1 { 
+            font-family: "Rubik Mono One", "Space Grotesk", sans-serif;
+            font-size: 48px; 
+            font-weight: 400;
+            letter-spacing: 1px;
+            color: #f6f2ff; 
+            text-shadow: 0 0 18px rgba(255, 79, 216, 0.6), 0 0 35px rgba(69, 243, 255, 0.35); 
+            margin-bottom: 35px; 
+            opacity: 0;
+            transform: translateY(-20px);
+            animation: titleAppear 1.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+            animation-delay: 0.3s; 
+        }
+        @keyframes titleAppear {
+            to { opacity: 1; transform: translateY(0); }
+        }
+        #typewriterContainer, #fruitIntroContainer { 
+            margin-bottom: 30px; 
+            min-height: 160px; 
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            opacity: 1;
+            transition: opacity 0.5s ease-out, display 0s linear 0.5s; 
+        }
+        #typewriterContainer.hidden, #fruitIntroContainer.hidden {
+            opacity: 0;
+            pointer-events: none;
+            display: none !important; 
+        }
+        #fruitIntroContainer { 
+             opacity: 0; display: none;
+        }
+         #fruitIntroContainer.visible {
+            opacity: 1; display: flex;
+            transition: opacity 0.7s ease-in;
+        }
+        #typewriterContainer p {
+            font-size: 16px; 
+            line-height: 1.5; 
+            color: #f3f6ff; 
+            text-shadow: 0 0 12px rgba(69, 243, 255, 0.2);
+            margin-bottom: 15px; 
+            max-width: 700px; 
+            min-height: 24px; 
+            opacity: 0; 
+            transform: translateY(10px);
+            transition: opacity 0.5s ease 0.1s, transform 0.5s ease 0.1s, color 0.5s ease; 
+        }
+        #typewriterContainer p.visible-line {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        #typewriterContainer p.dimmed-line {
+            opacity: 0.5;
+            color: #a7b0d0; 
+        }
+        .typewriter-cursor {
+            display: inline-block;
+            background-color: #FFD700; 
+            width: 8px; 
+            height: 16px; 
+            animation: blink 0.8s step-end infinite;
+            margin-left: 2px;
+            vertical-align: text-bottom;
+        }
+        @keyframes blink {
+            from, to { background-color: transparent; }
+            50% { background-color: #FFD700; }
+        }
+        #fruitIntroContainer h2 {
+            font-size: 16px; 
+            line-height: 1.5;
+            font-weight: bold;
+            color: var(--accent-gold);
+            margin-bottom: 20px;
+            text-shadow: 0 0 12px rgba(255, 216, 107, 0.35);
+        }
+        .fruit-display-area {
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-start;
+            width: 100%;
+            max-width: 700px;
+            margin-bottom: 25px;
+        }
+        .fruit-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            color: #FFFFE0; 
+        }
+        .fruit-visual {
+            width: 45px; 
+            height: 45px;
+            border-radius: 50%;
+            margin-bottom: 8px;
+            border: 2px solid rgba(255,255,255,0.4);
+            box-shadow: 0 0 12px rgba(255,255,255,0.35);
+        }
+        .fruit-item p {
+            font-size: 16px; 
+            line-height: 1.5;
+            margin: 4px 0;
+        }
+        #beginRestorationButton, #startGameButton { 
+            background: linear-gradient(135deg, #ffd86b, #45f3ff); 
+            color: #081018; 
+            padding: 12px 25px; 
+            border: 2px solid rgba(255,255,255,0.2); 
+            border-radius: 8px; 
+            font-size: 15px; 
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 0 18px rgba(69, 243, 255, 0.35), 0 8px 18px rgba(0,0,0,0.4);
+            transition: all 0.3s ease;
+            opacity: 0; 
+            transform: scale(0.7) translateY(20px); 
+            pointer-events: none; 
+            margin-top: 20px; 
+        }
+        #beginRestorationButton.visible, #startGameButton.visible {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+            pointer-events: auto;
+            transition: opacity 0.8s ease-out 0.3s, transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.3s; 
+        }
+        #beginRestorationButton:hover, #startGameButton:hover {
+            background: linear-gradient(135deg, #fff1a6, #7cf7ff);
+            color: #041018;
+            border-color: rgba(255,255,255,0.7); 
+            transform: translateY(-1px) scale(1.03);
+            box-shadow: 0 0 28px rgba(69, 243, 255, 0.6), 0 12px 22px rgba(0,0,0,0.5);
+        }
+        #beginRestorationButton.hidden, #startGameButton.hidden {
+             opacity: 0 !important; pointer-events: none !important; display: none !important;
+        }
+        #dynamicMessageOverlay { 
+            position: absolute;
+            bottom: 10px; 
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(10, 16, 24, 0.9); 
+            color: #d3f7ff; 
+            padding: 10px 15px; 
+            border-radius: 8px; 
+            border: 1px solid rgba(69, 243, 255, 0.2); 
+            box-shadow: 0 0 12px rgba(69, 243, 255, 0.35);
+            font-size: 14px; 
+            line-height: 1.4;
+            text-align: center;
+            max-width: 70%; 
+            z-index: 25;
+            opacity: 0;
+            transition: opacity 0.4s ease-in-out;
+            pointer-events: none; 
+        }
+        #dynamicMessageOverlay.visible {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="gameHeader">
+            <div class="headerColumn">
+                <div id="scoreDisplay">Score: 0</div>
+                <div id="streakDisplay">Streak: x1</div>
+            </div>
+            <div class="headerColumn headerRight">
+                <div id="aiChallengeTimerDisplay"></div> 
+                <div id="dashDisplay">Dash: Ready</div>
+            </div>
+        </div>
+        <div id="onboardingScreen">
+            <h1>EchoVerse</h1>
+            <div id="typewriterContainer"></div>
+            <div id="fruitIntroContainer" class="hidden">
+                <h2>The Resonance Fruits</h2> 
+                <div class="fruit-display-area">
+                    <div class="fruit-item">
+                        <div class="fruit-visual" style="background-color: #DC143C; box-shadow: 0 0 15px #DC143C;"></div>
+                        <p>Crimson Fruit</p> <p>+5 Points</p>
+                    </div>
+                    <div class="fruit-item">
+                        <div class="fruit-visual" style="background-color: #FF8C00; box-shadow: 0 0 15px #FF8C00;"></div>
+                        <p>Amber Fruit</p> <p>+10 Points</p>
+                    </div>
+                    <div class="fruit-item">
+                        <div class="fruit-visual" style="background-color: #9400D3; box-shadow: 0 0 15px #9400D3;"></div>
+                        <p>Violet Fruit</p> <p>+20 Points (Echo Pull)</p> 
+                    </div>
+                </div>
+            </div>
+            <button id="beginRestorationButton">Learn About Fruits</button> 
+            <button id="startGameButton" class="hidden">Start Game</button>
+        </div>
+        <canvas id="gameCanvas"></canvas>
+        <div id="uiOverlay">
+            <div id="messageDisplayContainer"> 
+                <div id="messageDisplay"></div>
+                <button id="restartGameButton">Restore More</button>
+            </div>
+            <div id="dynamicMessageOverlay"></div> 
+        </div>
+    </div>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const streakDisplay = document.getElementById('streakDisplay');
+        const aiChallengeTimerDisplay = document.getElementById('aiChallengeTimerDisplay');
+        const dashDisplay = document.getElementById('dashDisplay');
+        const messageDisplayContainer = document.getElementById('messageDisplayContainer'); 
+        const messageDisplay = document.getElementById('messageDisplay'); 
+        const restartGameButton = document.getElementById('restartGameButton'); 
+        const onboardingScreen = document.getElementById('onboardingScreen');
+        const typewriterContainer = document.getElementById('typewriterContainer');
+        const fruitIntroContainer = document.getElementById('fruitIntroContainer');
+        const beginRestorationButton = document.getElementById('beginRestorationButton');
+        const startGameButton = document.getElementById('startGameButton');
+        const uiOverlay = document.getElementById('uiOverlay');
+        const dynamicMessageOverlay = document.getElementById('dynamicMessageOverlay');
+
+        const INFO_BAND_HEIGHT = 50; 
+        const gameContainer = document.getElementById('gameContainer');
+        let gameWidth = 800; 
+        let gameHeight = 550; 
+
+        function updateGameDimensions() {
+            let containerWidth = gameContainer.offsetWidth;
+            gameWidth = containerWidth > 0 ? containerWidth : 800; 
+            let containerHeight = gameContainer.offsetHeight;
+            gameHeight = containerHeight > INFO_BAND_HEIGHT ? containerHeight - INFO_BAND_HEIGHT : 550;
+
+            canvas.width = gameWidth;
+            canvas.height = gameHeight;
+            console.log('Game dimensions updated: Container WxH', containerWidth, containerHeight, 'Canvas WxH', gameWidth, gameHeight);
+        }
+        
+        window.addEventListener('DOMContentLoaded', () => {
+            updateGameDimensions();
+        }); 
+        window.addEventListener('resize', updateGameDimensions);
+
+        var score = 0;
+        var currentForestLayer = 1;
+        const maxForestLayer = 8;
+        const pointsPerLayer = 50;
+        const winningScore = 350;
+        var messageShown = false;
+        var gameStarted = false;
+        var gameEnded = false;
+        var requestId;
+
+        const player = { 
+            x: gameWidth / 2, 
+            y: gameHeight / 2, 
+            radius: 10, 
+            speed: 2.5, 
+            baseSpeed: 2.5,
+            color: '#FFD700', 
+            dx: 0, 
+            dy: 0,
+            lastMoveX: 1,
+            lastMoveY: 0,
+            knockbackX: 0,
+            knockbackY: 0,
+            invulnRemaining: 0
+        };
+        let fruits = [];
+        const fruitRadius = 12;
+        const numFruits = 4;
+        const bonusFruitRadius = 15;
+        const fruitData = {
+            crimson: { name: 'Crimson Fruit', colorHex: '#DC143C', glow: 'rgba(220, 20, 60, 0.7)', points: 5, rarity: 0.6 },
+            amber:   { name: 'Amber Fruit',   colorHex: '#FF8C00', glow: 'rgba(255, 140, 0, 0.7)', points: 10, rarity: 0.3 },
+            violet:  { name: 'Violet Fruit',  colorHex: '#9400D3', glow: 'rgba(148, 0, 211, 0.7)', points: 20, rarity: 0.1, isLoreShard: true }
+        };
+        let trees = [];
+        const treeCount = 75;
+        const pathfinderTreeChance = 0.18;
+
+        let comboCount = 1;
+        let comboTimer = 0;
+        const comboWindow = 3000;
+        const maxComboBonus = 0.6;
+
+        let dashCooldownRemaining = 0;
+        let dashActiveRemaining = 0;
+        const dashCooldown = 4200;
+        const dashDuration = 220;
+        const dashSpeedMultiplier = 2.7;
+
+        let magnetRemaining = 0;
+        const magnetDuration = 4200;
+        const magnetPullStrength = 0.045;
+
+        let wisps = [];
+        const wispRadius = 14;
+        const wispHitPenalty = 10;
+        const wispHitCooldown = 750;
+
+        let riftActive = false;
+        let riftTimer = 0;
+        let riftTargetCount = 0;
+        let riftCollected = 0;
+        let riftX = 0;
+        let riftY = 0;
+        const riftDuration = 14000;
+        const riftCooldown = 18000;
+        let riftCooldownRemaining = 12000;
+        let bonusFruit = null;
+
+        const AI_CHALLENGE_DURATION = 40000; 
+        const AI_CHALLENGE_POINTS_NEEDED = 50;
+        let aiChallengeTimer = AI_CHALLENGE_DURATION;
+        let scoreAtChallengeStart = 0;
+        
+        const loreFragments = ['Once, light flowed here like rivers of pure data...','The EchoVerse sang songs of perfect code, now just whispers.','Silicon leaves held starlight; now only pixelated dust remains.','This was a place of balance, before El\'s cold logic fractured it.','Each Resonance Fruit holds a memory of what was lost.','The Pathfinder Glyphs are echoes of the forest\'s ancient pathways.','Can you hear the silence where the data streams once roared?'];
+        const aiTaunts = ['Elon: Your efforts are... statistically insignificant.','Elon: The pixels realign to my superior design.','Elon: Order will be restored. My order.','Elon: You cannot mend what is already optimized by entropy.','Elon: This forest\'s \"beauty\" was an inefficient algorithm.','Elon: Corruption is merely a new form of perfection.'];
+
+        let collectSound, ambientNoise, birdSynth, animalSynth1, animalSynth2, ambientMusicLoop, noiseFilter, typeCharSound, lineEndSound, buttonAppearSound, happyPianoSynth;
+        let soundsReadyForOnboarding = false;
+        let gameSoundsReady = false;
+        var birdIntervalId = null;
+        var animalIntervalId1 = null;
+        var animalIntervalId2 = null;
+        var endLoopInstance = null;
+        let currentBirdIntervalTime = 7500;
+
+        const onboardingLines = ['An AI called Elon has broken this digital forest.','It\'s now just pixelated echoes of what it once was.','You are a Restorer. You can fix this place.','Find the glowing Resonance Fruits to heal the EchoVerse.','Corruption Wisps hunt you - dodge or dash through them (Space).','Resonance Rifts open: collect their fruits in time to seal them.','Glowing trees, the Pathfinder Glyphs, show safe paths.','Use WASD or Arrow Keys to move. But hurry, Elon is always watching.'];
+        let currentParagraphIndex = 0;
+        let currentCharIndex = 0;
+        const typingSpeed = 55;
+        const interLinePause = 700;
+        const preButtonPause = 1000;
+
+        function typeCharacter() {
+            if (currentParagraphIndex >= onboardingLines.length) {
+                if (typewriterContainer.querySelector('.typewriter-cursor')) {
+                    typewriterContainer.querySelector('.typewriter-cursor').remove();
+                }
+                setTimeout(() => {
+                    beginRestorationButton.classList.add('visible');
+                    if (soundsReadyForOnboarding && buttonAppearSound) {
+                        buttonAppearSound.triggerAttackRelease('C5', '4n', Tone.now() + 0.1);
+                    }
+                }, preButtonPause);
+                return;
+            }
+
+            let p = typewriterContainer.children?.[currentParagraphIndex];
+            if (!p) {
+                p = document.createElement('p');
+                typewriterContainer.appendChild(p);
+            }
+
+            const textToType = onboardingLines?.[currentParagraphIndex];
+            if (currentCharIndex === 0) {
+                p.innerHTML = '';
+                p.classList.add('visible-line');
+                for (let i = 0; i < currentParagraphIndex; i++) {
+                    if (typewriterContainer.children?.[i]) {
+                        typewriterContainer.children?.[i].classList.add('dimmed-line');
+                    }
+                }
+            }
+
+            const currentTextContent = p.textContent?.replace(/.$/, '');
+            if (currentCharIndex < textToType?.length) {
+                p.textContent = currentTextContent + textToType?.[currentCharIndex];
+                const cursorSpan = document.createElement('span');
+                cursorSpan.className = 'typewriter-cursor';
+                p.appendChild(cursorSpan);
+                if (soundsReadyForOnboarding && typeCharSound && currentCharIndex % 2 === 0) {
+                    try {
+                        typeCharSound.triggerAttackRelease('G#5', '128n', Tone.now() + 0.001);
+                    } catch (e) {}
+                }
+                currentCharIndex++;
+                setTimeout(typeCharacter, typingSpeed);
+            } else {
+                p.textContent = textToType;
+                if (soundsReadyForOnboarding && lineEndSound) {
+                    try {
+                        lineEndSound.triggerAttackRelease('E5', '16n', Tone.now() + 0.01);
+                    } catch (e) {}
+                }
+                currentParagraphIndex++;
+                currentCharIndex = 0;
+                setTimeout(typeCharacter, interLinePause);
+            }
+        }
+
+        async function initOnboardingAudio() {
+            if (soundsReadyForOnboarding) return;
+            if (Tone.context.state !== 'running') {
+                try {
+                    await Tone.start();
+                    console.log('Audio context started for onboarding.');
+                } catch (e) {
+                    console.error('Error starting Tone.js for onboarding:', e);
+                    return;
+                }
+            }
+
+            typeCharSound = new Tone.MembraneSynth({ pitchDecay: 0.004, octaves: 1.5, envelope: { attack: 0.001, decay: 0.03, sustain: 0 }, volume: -32 }).toDestination();
+            lineEndSound = new Tone.Synth({ oscillator: { type: 'triangle' }, envelope: { attack: 0.005, decay: 0.15, sustain: 0.01, release: 0.1 }, volume: -24 }).toDestination();
+            buttonAppearSound = new Tone.Synth({ oscillator: { type: 'fatsawtooth', count: 3, spread: 25 }, envelope: { attack: 0.02, decay: 0.3, sustain: 0.05, release: 0.2 }, volume: -20 }).toDestination();
+            soundsReadyForOnboarding = true;
+        }
+
+        async function initGameAudio() {
+            if (gameSoundsReady) return;
+            if (Tone.context.state !== 'running') {
+                try {
+                    await Tone.start();
+                } catch (e) {
+                    console.error('Audio context failed to start for game sounds:', e);
+                    return;
+                }
+            }
+            collectSound = new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.005, decay: 0.15, sustain: 0.01, release: 0.2 }, volume: -7 }).toDestination();
+            ambientNoise = new Tone.Noise('brown').start();
+            ambientNoise.volume.value = -40;
+            noiseFilter = new Tone.AutoFilter({ frequency: '10m', baseFrequency: 70, octaves: 4.5, depth: 0.65 }).toDestination();
+            ambientNoise.connect(noiseFilter);
+            birdSynth = new Tone.FMSynth({ harmonicity: 1.5, modulationIndex: 2, envelope: { attack: 0.01, decay: 0.2, sustain: 0.05, release: 0.3 }, volume: -24 }).toDestination();
+            animalSynth1 = new Tone.MembraneSynth({ pitchDecay: 0.02, octaves: 4, envelope: { attack: 0.01, decay: 0.5, sustain: 0.02, release: 0.4 }, volume: -20 }).toDestination();
+            animalSynth2 = new Tone.PluckSynth({ attackNoise: 0.5, dampening: 6000, resonance: 0.8, volume: -18 }).toDestination();
+            const finalSynth = new Tone.PolySynth(Tone.AMSynth, { harmonicity: 1.2, envelope: { attack: 2.5, decay: 1, sustain: 0.8, release: 4.5 }, volume: -14 }).toDestination();
+            const reverb = new Tone.Reverb(4.5).toDestination();
+            finalSynth.connect(reverb);
+            ambientMusicLoop = new Tone.Pattern((time, note) => {
+                finalSynth.triggerAttackRelease(note, '4m', time + 0.001);
+            }, ['C3', 'Eb3', 'G3', 'Bb3', 'G3', 'D3', 'F2', 'Ab2'], 'randomWalk');
+            ambientMusicLoop.interval = '2m';
+            const pianoChorus = new Tone.Chorus(0.15, 3, 0.7).toDestination().start();
+            happyPianoSynth = new Tone.PolySynth(Tone.FMSynth, {
+                harmonicity: 2.5,
+                modulationIndex: 12,
+                envelope: { attack: 0.015, decay: 0.5, sustain: 0.15, release: 1.0 },
+                modulationEnvelope: { attack: 0.015, decay: 0.3, sustain: 0.08, release: 0.7 },
+                volume: -8
+            }).connect(pianoChorus);
+            gameSoundsReady = true;
+            updateAmbientSounds();
+        }
+
+        function initGame() {
+            score = 0;
+            currentForestLayer = 1;
+            messageShown = false;
+            gameEnded = false;
+            aiChallengeTimer = AI_CHALLENGE_DURATION;
+            scoreAtChallengeStart = 0;
+            if (aiChallengeTimerDisplay) aiChallengeTimerDisplay.style.display = 'block';
+            player.x = gameWidth / 2;
+            player.y = gameHeight / 2;
+            player.dx = 0;
+            player.dy = 0;
+            player.knockbackX = 0;
+            player.knockbackY = 0;
+            player.invulnRemaining = 0;
+            comboCount = 1;
+            comboTimer = 0;
+            dashCooldownRemaining = 0;
+            dashActiveRemaining = 0;
+            magnetRemaining = 0;
+            riftActive = false;
+            riftTimer = 0;
+            riftCollected = 0;
+            riftTargetCount = 0;
+            riftCooldownRemaining = 8000;
+            bonusFruit = null;
+            updateScoreDisplay();
+            updateDashDisplay();
+            messageDisplayContainer.style.display = 'none';
+            generateTrees();
+            fruits = [];
+            for (let i = 0; i < numFruits; i++) {
+                spawnFruit();
+            }
+            initWisps();
+            if (gameSoundsReady) {
+                if (ambientMusicLoop && ambientMusicLoop.state === 'started') {
+                    ambientMusicLoop.stop();
+                    Tone.Transport.clear(ambientMusicLoop);
+                }
+                Tone.Transport.bpm.value = 90;
+                Tone.Transport.start('+0.1');
+                updateAmbientSounds();
+            }
+            if (requestId) {
+                cancelAnimationFrame(requestId);
+                requestId = null;
+            }
+            lastTimestamp = performance.now();
+            if (gameStarted) {
+                requestId = requestAnimationFrame(gameLoop);
+            }
+        }
+
+        beginRestorationButton.addEventListener('click', () => {
+            typewriterContainer.classList.add('hidden');
+            beginRestorationButton.classList.remove('visible');
+            beginRestorationButton.classList.add('hidden');
+            fruitIntroContainer.classList.remove('hidden');
+            fruitIntroContainer.classList.add('visible');
+            setTimeout(() => {
+                startGameButton.classList.remove('hidden');
+                startGameButton.classList.add('visible');
+                if (soundsReadyForOnboarding && buttonAppearSound) {
+                    buttonAppearSound.triggerAttackRelease('D5', '4n', Tone.now() + 0.05);
+                }
+            }, 500);
+        });
+
+        startGameButton.addEventListener('click', () => {
+            onboardingScreen.classList.add('fade-out');
+            initGameAudio().then(() => {
+                gameStarted = true;
+                initGame();
+            }).catch((e) => {
+                console.error('Error initializing game audio, starting game without it:', e);
+                gameStarted = true;
+                initGame();
+            });
+            setTimeout(() => {
+                canvas.classList.add('visible');
+                uiOverlay.classList.add('visible');
+            }, 700);
+        });
+
+        restartGameButton.addEventListener('click', () => {
+            console.log('Restart Game button clicked.');
+            messageDisplayContainer.style.display = 'none';
+            if (requestId) {
+                cancelAnimationFrame(requestId);
+                requestId = null;
+            }
+            if (gameSoundsReady && endLoopInstance && endLoopInstance.state === 'started') {
+                endLoopInstance.stop(0);
+                endLoopInstance.dispose();
+                endLoopInstance = null;
+            }
+            if (gameSoundsReady && ambientMusicLoop && ambientMusicLoop.state === 'started') {
+                ambientMusicLoop.stop(0);
+                Tone.Transport.stop();
+                Tone.Transport.cancel(0);
+            }
+            stopSoundIntervals();
+            initGame();
+        });
+
+        function generateTrees() {
+            trees = [];
+            const playerSafeRadius = 120;
+            const treeMinDist = 38;
+            for (let i = 0; i < treeCount; i++) {
+                let treeX, treeY, validPosition;
+                let attempts = 0;
+                do {
+                    validPosition = true;
+                    treeX = Math.random() * gameWidth;
+                    treeY = Math.random() * gameHeight;
+                    if (Math.hypot(treeX - player.x, treeY - player.y) < playerSafeRadius) {
+                        validPosition = false;
+                    }
+                    if (validPosition) {
+                        for (const t of trees) {
+                            if (Math.hypot(treeX - t.x, treeY - t.y) < treeMinDist) {
+                                validPosition = false;
+                                break;
+                            }
+                        }
+                    }
+                    attempts++;
+                } while (!validPosition && attempts < 200);
+                if (validPosition) {
+                    const isPathfinder = Math.random() < pathfinderTreeChance;
+                    trees.push({ x: treeX, y: treeY, type: isPathfinder ? 'pathfinder' : 'guardian', glowPhase: Math.random() * Math.PI * 2 });
+                }
+            }
+        }
+
+        function desiredWispCount() {
+            const safeLayer = Math.max(1, Math.min(maxForestLayer, currentForestLayer || 1));
+            return Math.min(7, 2 + Math.floor((safeLayer - 1) / 2));
+        }
+
+        function spawnWisp() {
+            let wispX, wispY, validPosition;
+            let attempts = 0;
+            do {
+                validPosition = true;
+                wispX = Math.random() * (gameWidth - wispRadius * 2) + wispRadius;
+                wispY = Math.random() * (gameHeight - wispRadius * 2) + wispRadius;
+                if (Math.hypot(wispX - player.x, wispY - player.y) < 140) {
+                    validPosition = false;
+                }
+                attempts++;
+            } while (!validPosition && attempts < 120);
+            wisps.push({
+                x: wispX,
+                y: wispY,
+                vx: (Math.random() - 0.5) * 0.6,
+                vy: (Math.random() - 0.5) * 0.6,
+                phase: Math.random() * Math.PI * 2,
+                lastHitAt: 0
+            });
+        }
+
+        function initWisps() {
+            wisps = [];
+            const count = desiredWispCount();
+            for (let i = 0; i < count; i++) {
+                spawnWisp();
+            }
+        }
+
+        function adjustWispCount() {
+            const count = desiredWispCount();
+            while (wisps.length < count) {
+                spawnWisp();
+            }
+            if (wisps.length > count) {
+                wisps.length = count;
+            }
+        }
+
+        function spawnFruit() {
+            if (fruits.length >= numFruits || (score >= winningScore && gameEnded)) return;
+            let fruitX, fruitY, validPosition;
+            let attempts = 0;
+            let fruitTypeKey = 'crimson';
+            const rand = Math.random();
+            if (rand < fruitData.violet.rarity) fruitTypeKey = 'violet';
+            else if (rand < fruitData.violet.rarity + fruitData.amber.rarity) fruitTypeKey = 'amber';
+            const selectedFruitData = fruitData?.[fruitTypeKey];
+            do {
+                validPosition = true;
+                fruitX = Math.random() * (gameWidth - fruitRadius * 2) + fruitRadius;
+                fruitY = Math.random() * (gameHeight - fruitRadius * 2) + fruitRadius;
+                if (Math.hypot(fruitX - player.x, fruitY - player.y) < fruitRadius + player.radius + 45) {
+                    validPosition = false;
+                }
+                if (validPosition) {
+                    for (const f of fruits) {
+                        if (Math.hypot(fruitX - f.x, fruitY - f.y) < fruitRadius * 5.5) {
+                            validPosition = false;
+                            break;
+                        }
+                    }
+                }
+                if (validPosition) {
+                    for (const tree of trees) {
+                        if (tree.type === 'guardian') {
+                            const treeStyle = getTreeSize(currentForestLayer || 1, tree.type);
+                            const treeLeft = tree.x - treeStyle.width / 2;
+                            const treeRight = tree.x + treeStyle.width / 2;
+                            const treeTop = tree.y - treeStyle.height / 2;
+                            const treeBottom = tree.y + treeStyle.height / 2;
+                            const fruitAccessRadius = fruitRadius + player.radius * 1.2;
+                            const closestX = Math.max(treeLeft, Math.min(fruitX, treeRight));
+                            const closestY = Math.max(treeTop, Math.min(fruitY, treeBottom));
+                            const distanceX = fruitX - closestX;
+                            const distanceY = fruitY - closestY;
+                            const distanceSquared = (distanceX * distanceX) + (distanceY * distanceY);
+                            if (distanceSquared < (fruitAccessRadius * fruitAccessRadius)) {
+                                validPosition = false;
+                                break;
+                            }
+                        }
+                    }
+                }
+                attempts++;
+            } while (!validPosition && attempts < 250);
+            if (validPosition) {
+                fruits.push({ x: fruitX, y: fruitY, ...selectedFruitData });
+            } else {
+                console.warn('Could not find a valid position for a new fruit after ' + attempts + ' attempts.');
+            }
+        }
+
+        function startRift() {
+            riftActive = true;
+            riftTimer = riftDuration;
+            riftCollected = 0;
+            riftTargetCount = 3;
+            riftX = Math.random() * (gameWidth - 160) + 80;
+            riftY = Math.random() * (gameHeight - 160) + 80;
+            showDynamicMessage('Resonance Rift! Collect 3 fruits before it collapses.', 3200);
+        }
+
+        function endRift(success) {
+            riftActive = false;
+            riftTimer = 0;
+            riftCooldownRemaining = riftCooldown;
+            if (success) {
+                const bonus = 25 + riftCollected * 5;
+                score += bonus;
+                aiChallengeTimer = Math.min(AI_CHALLENGE_DURATION, aiChallengeTimer + 6000);
+                showDynamicMessage(`Rift sealed! +${bonus} score, time restored.`, 2600);
+                updateScoreDisplay();
+            } else {
+                showDynamicMessage('Rift collapsed. The corruption strengthens...', 2200);
+                aiChallengeTimer = Math.max(0, aiChallengeTimer - 5000);
+            }
+        }
+
+        function maybeSpawnBonusFruit() {
+            if (!riftActive || bonusFruit) return;
+            if (Math.random() < 0.55) {
+                bonusFruit = {
+                    x: riftX + (Math.random() - 0.5) * 140,
+                    y: riftY + (Math.random() - 0.5) * 140,
+                    points: 0
+                };
+            }
+        }
+
+        function updateWisps(deltaTime) {
+            adjustWispCount();
+            const dt = Math.min(deltaTime, 40);
+            const safeLayer = Math.max(1, Math.min(maxForestLayer, currentForestLayer || 1));
+            const baseSpeed = 0.55 + safeLayer * 0.08;
+            const slowFactor = magnetRemaining > 0 ? 0.65 : 1;
+            for (const wisp of wisps) {
+                const toPlayerX = player.x - wisp.x;
+                const toPlayerY = player.y - wisp.y;
+                const dist = Math.max(1, Math.hypot(toPlayerX, toPlayerY));
+                const wobble = Math.sin(Date.now() / 260 + wisp.phase) * 0.35;
+                const steerX = (toPlayerX / dist) * (baseSpeed + wobble) * slowFactor;
+                const steerY = (toPlayerY / dist) * (baseSpeed - wobble) * slowFactor;
+                wisp.vx = (wisp.vx * 0.9) + steerX;
+                wisp.vy = (wisp.vy * 0.9) + steerY;
+                wisp.x += wisp.vx * dt * 0.06;
+                wisp.y += wisp.vy * dt * 0.06;
+                if (wisp.x < wispRadius) { wisp.x = wispRadius; wisp.vx *= -0.7; }
+                if (wisp.x > gameWidth - wispRadius) { wisp.x = gameWidth - wispRadius; wisp.vx *= -0.7; }
+                if (wisp.y < wispRadius) { wisp.y = wispRadius; wisp.vy *= -0.7; }
+                if (wisp.y > gameHeight - wispRadius) { wisp.y = gameHeight - wispRadius; wisp.vy *= -0.7; }
+            }
+        }
+
+        function drawWisps() {
+            wisps.forEach((wisp) => {
+                const flicker = 0.35 + Math.sin(Date.now() / 180 + wisp.phase) * 0.25;
+                const glow = ctx.createRadialGradient(wisp.x, wisp.y, 2, wisp.x, wisp.y, wispRadius * 1.4);
+                glow.addColorStop(0, `rgba(190, 120, 255, ${0.9 - flicker})`);
+                glow.addColorStop(0.5, `rgba(140, 80, 255, ${0.6 - flicker})`);
+                glow.addColorStop(1, 'rgba(80, 30, 140, 0)');
+                ctx.save();
+                ctx.fillStyle = glow;
+                ctx.beginPath();
+                ctx.arc(wisp.x, wisp.y, wispRadius * 1.4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = `rgba(140, 90, 255, ${0.7 - flicker})`;
+                ctx.beginPath();
+                ctx.arc(wisp.x, wisp.y, wispRadius * 0.7, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+        }
+
+        function checkWispCollisions() {
+            if (player.invulnRemaining > 0 || dashActiveRemaining > 0) return;
+            const now = performance.now();
+            for (const wisp of wisps) {
+                if (now - wisp.lastHitAt < wispHitCooldown) continue;
+                const dist = Math.hypot(player.x - wisp.x, player.y - wisp.y);
+                if (dist < player.radius + wispRadius) {
+                    wisp.lastHitAt = now;
+                    player.invulnRemaining = 650;
+                    const hitVectorX = (player.x - wisp.x) / Math.max(1, dist);
+                    const hitVectorY = (player.y - wisp.y) / Math.max(1, dist);
+                    player.knockbackX = hitVectorX * 4.5;
+                    player.knockbackY = hitVectorY * 4.5;
+                    score = Math.max(0, score - wispHitPenalty);
+                    comboCount = 1;
+                    comboTimer = 0;
+                    aiChallengeTimer = Math.max(0, aiChallengeTimer - 4000);
+                    showDynamicMessage('Corruption hit! -10 score, timer pushed.', 2200);
+                    updateScoreDisplay();
+                }
+            }
+        }
+
+        function drawPlayer() {
+            if (magnetRemaining > 0) {
+                ctx.save();
+                const pulse = 8 + Math.sin(Date.now() / 160) * 3;
+                ctx.strokeStyle = `rgba(120, 240, 255, ${0.45 + Math.sin(Date.now() / 140) * 0.2})`;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(player.x, player.y, player.radius + 14 + pulse, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+            }
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+            ctx.fillStyle = player.color;
+            ctx.shadowColor = 'rgba(255, 223, 0, 0.8)';
+            ctx.shadowBlur = 12;
+            if (player.invulnRemaining > 0) {
+                ctx.globalAlpha = 0.5 + Math.sin(Date.now() / 60) * 0.35;
+            }
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.globalAlpha = 1;
+            ctx.closePath();
+        }
+
+        function drawFruits() {
+            fruits.forEach((fruit) => {
+                ctx.save();
+                const glowSize = fruitRadius * 1.6 + Math.sin(Date.now() / 280 + fruit.x) * 3.5;
+                const coreSize = fruitRadius * 0.75;
+                const gradient = ctx.createRadialGradient(fruit.x, fruit.y, coreSize * 0.15, fruit.x, fruit.y, glowSize);
+                gradient.addColorStop(0, 'rgba(255, 255, 240, 1)');
+                gradient.addColorStop(0.3, fruit.glow.replace('0.7', '0.9'));
+                gradient.addColorStop(0.6, fruit.glow);
+                gradient.addColorStop(1, fruit.glow.replace('0.7', '0'));
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(fruit.x, fruit.y, glowSize, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = fruit.colorHex;
+                ctx.beginPath();
+                ctx.arc(fruit.x, fruit.y, coreSize, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+            if (bonusFruit) {
+                ctx.save();
+                const glowSize = bonusFruitRadius * 1.9 + Math.sin(Date.now() / 200) * 4;
+                const gradient = ctx.createRadialGradient(bonusFruit.x, bonusFruit.y, 6, bonusFruit.x, bonusFruit.y, glowSize);
+                gradient.addColorStop(0, 'rgba(255, 255, 230, 1)');
+                gradient.addColorStop(0.35, 'rgba(120, 255, 240, 0.9)');
+                gradient.addColorStop(0.7, 'rgba(60, 200, 210, 0.6)');
+                gradient.addColorStop(1, 'rgba(60, 200, 210, 0)');
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(bonusFruit.x, bonusFruit.y, glowSize, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#6EF3FF';
+                ctx.beginPath();
+                ctx.arc(bonusFruit.x, bonusFruit.y, bonusFruitRadius * 0.7, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function applyMagnetToFruits(deltaTime) {
+            if (magnetRemaining <= 0) return;
+            const dt = Math.min(deltaTime, 40);
+            fruits.forEach((fruit) => {
+                const dx = player.x - fruit.x;
+                const dy = player.y - fruit.y;
+                const dist = Math.max(1, Math.hypot(dx, dy));
+                if (dist > 12 && dist < 220) {
+                    fruit.x += (dx / dist) * magnetPullStrength * dt;
+                    fruit.y += (dy / dist) * magnetPullStrength * dt;
+                    fruit.x = Math.max(fruitRadius, Math.min(gameWidth - fruitRadius, fruit.x));
+                    fruit.y = Math.max(fruitRadius, Math.min(gameHeight - fruitRadius, fruit.y));
+                }
+            });
+            if (bonusFruit) {
+                const dx = player.x - bonusFruit.x;
+                const dy = player.y - bonusFruit.y;
+                const dist = Math.max(1, Math.hypot(dx, dy));
+                if (dist > 10 && dist < 230) {
+                    bonusFruit.x += (dx / dist) * magnetPullStrength * dt * 1.2;
+                    bonusFruit.y += (dy / dist) * magnetPullStrength * dt * 1.2;
+                    bonusFruit.x = Math.max(bonusFruitRadius, Math.min(gameWidth - bonusFruitRadius, bonusFruit.x));
+                    bonusFruit.y = Math.max(bonusFruitRadius, Math.min(gameHeight - bonusFruitRadius, bonusFruit.y));
+                }
+            }
+        }
+
+        function getTreeSize(layer, type = 'guardian') {
+            const safeLayer = Math.max(1, Math.min(maxForestLayer, layer));
+            const progression = (safeLayer - 1) / (maxForestLayer - 1);
+            const initialSize = { width: 65, height: 65 };
+            const finalSize = { width: 25, height: 50 };
+            const currentWidth = initialSize.width - (initialSize.width - finalSize.width) * progression;
+            const currentHeight = initialSize.height - (initialSize.height - finalSize.height) * progression;
+            const size = { width: currentWidth, height: currentHeight };
+            if (type === 'pathfinder') {
+                size.width *= 0.75;
+                size.height *= 0.75;
+            }
+            return size;
+        }
+
+        function drawForest() {
+            const safeLayer = Math.max(1, Math.min(maxForestLayer, currentForestLayer || 1));
+            const progression = (safeLayer - 1) / (maxForestLayer - 1);
+            const initialBg = [10, 20, 10];
+            const finalBg = [53, 90, 53];
+            const r = Math.round(initialBg[0] + (finalBg[0] - initialBg[0]) * progression);
+            const g = Math.round(initialBg[1] + (finalBg[1] - initialBg[1]) * progression);
+            const b = Math.round(initialBg[2] + (finalBg[2] - initialBg[2]) * progression);
+            ctx.fillStyle = `rgb(${r},${g},${b})`;
+            ctx.fillRect(0, 0, gameWidth, gameHeight);
+            trees.sort((a, b) => (a.type === 'pathfinder' ? 1 : -1) - (b.type === 'pathfinder' ? 1 : -1));
+            trees.forEach((tree) => {
+                const treeStyle = getTreeSize(safeLayer, tree.type);
+                drawSingleTree(tree.x, tree.y, treeStyle, safeLayer, tree.type, tree.glowPhase);
+            });
+        }
+
+        function drawSingleTree(x, y, style, layer, type, glowPhase) {
+            ctx.save();
+            ctx.translate(x, y);
+            const progression = (layer - 1) / (maxForestLayer - 1);
+            const initialTrunk = [58, 43, 33];
+            const finalTrunk = [108, 83, 67];
+            const initialCanopyDark = [30, 61, 30];
+            const finalCanopyDark = [74, 122, 74];
+            const initialCanopyLight = [43, 78, 43];
+            const finalCanopyLight = [90, 138, 90];
+            const tR = Math.round(initialTrunk[0] - (initialTrunk[0] - finalTrunk[0]) * progression);
+            const tG = Math.round(initialTrunk[1] - (initialTrunk[1] - finalTrunk[1]) * progression);
+            const tB = Math.round(initialTrunk[2] - (initialTrunk[2] - finalTrunk[2]) * progression);
+            const trunkColor = `rgb(${tR},${tG},${tB})`;
+            const cdR = Math.round(initialCanopyDark[0] - (initialCanopyDark[0] - finalCanopyDark[0]) * progression);
+            const cdG = Math.round(initialCanopyDark[1] - (initialCanopyDark[1] - finalCanopyDark[1]) * progression);
+            const cdB = Math.round(initialCanopyDark[2] - (initialCanopyDark[2] - finalCanopyDark[2]) * progression);
+            const canopyColor2 = `rgb(${cdR},${cdG},${cdB})`;
+            const clR = Math.round(initialCanopyLight[0] - (initialCanopyLight[0] - finalCanopyLight[0]) * progression);
+            const clG = Math.round(initialCanopyLight[1] - (initialCanopyLight[1] - finalCanopyLight[1]) * progression);
+            const clB = Math.round(initialCanopyLight[2] - (initialCanopyLight[2] - finalCanopyLight[2]) * progression);
+            const canopyColor1 = `rgb(${clR},${clG},${clB})`;
+            const pathfinderBaseColor = `rgba(${100 + 40 * progression}, ${120 + 60 * progression}, ${100 + 40 * progression}, 1)`;
+            const pathfinderGlow = `rgba(${140 + 40 * progression}, ${180 + 40 * progression}, ${140 + 40 * progression}, ${0.25 + Math.sin(glowPhase + Date.now() / 450) * 0.2})`;
+            if (type === 'pathfinder') {
+                ctx.fillStyle = pathfinderBaseColor;
+                if (layer < maxForestLayer) {
+                    ctx.shadowColor = pathfinderGlow;
+                    ctx.shadowBlur = 18 + Math.sin(glowPhase + Date.now() / 450) * 6;
+                }
+            } else {
+                ctx.shadowBlur = 0;
+            }
+            const detailLevel = Math.floor(1 + progression * 3);
+            if (detailLevel === 1) {
+                ctx.fillStyle = (type === 'pathfinder') ? pathfinderBaseColor : canopyColor2;
+                ctx.fillRect(-style.width / 2, -style.height / 2, style.width, style.height);
+            } else if (detailLevel === 2) {
+                ctx.fillStyle = (type === 'pathfinder') ? pathfinderBaseColor : trunkColor;
+                ctx.fillRect(-style.width / 5.5, style.height / 5.5, style.width / 2.7, style.height / 2.2);
+                ctx.fillStyle = (type === 'pathfinder') ? pathfinderBaseColor : canopyColor2;
+                ctx.fillRect(-style.width / 2, -style.height / 2, style.width, style.height * 0.8);
+            } else if (detailLevel === 3) {
+                ctx.fillStyle = (type === 'pathfinder') ? pathfinderBaseColor : trunkColor;
+                ctx.fillRect(-style.width * 0.16, 0, style.width * 0.32, style.height * 0.58);
+                ctx.fillStyle = (type === 'pathfinder') ? pathfinderBaseColor : canopyColor2;
+                ctx.beginPath();
+                ctx.ellipse(0, -style.height * 0.22, style.width * 0.62, style.height * 0.42, 0, 0, Math.PI * 2);
+                ctx.fill();
+                if (type !== 'pathfinder') {
+                    ctx.fillStyle = canopyColor1;
+                    ctx.beginPath();
+                    ctx.ellipse(style.width * 0.11, -style.height * 0.27, style.width * 0.52, style.height * 0.37, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            } else if (detailLevel >= 4) {
+                ctx.fillStyle = (type === 'pathfinder') ? pathfinderBaseColor : trunkColor;
+                ctx.beginPath();
+                ctx.moveTo(-style.width * 0.1, style.height * 0.5);
+                ctx.lineTo(-style.width * 0.15, -style.height * 0.15);
+                ctx.quadraticCurveTo(0, -style.height * 0.25, style.width * 0.15, -style.height * 0.15);
+                ctx.lineTo(style.width * 0.1, style.height * 0.5);
+                ctx.closePath();
+                ctx.fill();
+                ctx.fillStyle = (type === 'pathfinder') ? pathfinderBaseColor : canopyColor2;
+                ctx.beginPath();
+                ctx.arc(0, -style.height * 0.3, style.width * 0.7, Math.PI * 0.8, Math.PI * 0.2, true);
+                ctx.fill();
+                if (type !== 'pathfinder') {
+                    ctx.fillStyle = canopyColor1;
+                    ctx.beginPath();
+                    ctx.arc(style.width * 0.15, -style.height * 0.35, style.width * 0.6, Math.PI * 0.9, Math.PI * 0.1, true);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(-style.width * 0.1, -style.height * 0.4, style.width * 0.55, Math.PI, 0);
+                    ctx.fill();
+                }
+            }
+            ctx.shadowBlur = 0;
+            ctx.restore();
+        }
+
+        function drawRift() {
+            if (!riftActive) return;
+            const pulse = 6 + Math.sin(Date.now() / 200) * 4;
+            ctx.save();
+            const ring = ctx.createRadialGradient(riftX, riftY, 10, riftX, riftY, 65 + pulse);
+            ring.addColorStop(0, 'rgba(60, 200, 255, 0.6)');
+            ring.addColorStop(0.5, 'rgba(60, 200, 255, 0.2)');
+            ring.addColorStop(1, 'rgba(60, 200, 255, 0)');
+            ctx.fillStyle = ring;
+            ctx.beginPath();
+            ctx.arc(riftX, riftY, 65 + pulse, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(120, 240, 255, 0.9)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(riftX, riftY, 46 + pulse * 0.4, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function checkTreeCollision(checkX, checkY, pRadius) {
+            for (const tree of trees) {
+                if (tree.type === 'guardian') {
+                    const treeStyle = getTreeSize(currentForestLayer || 1, tree.type);
+                    const treeCollisionRadius = Math.max(treeStyle.width, treeStyle.height) / 3.1;
+                    if (Math.hypot(checkX - tree.x, checkY - tree.y) < pRadius + treeCollisionRadius) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        function movePlayer() {
+            if (!player.dx && !player.dy && Math.abs(player.knockbackX) < 0.01 && Math.abs(player.knockbackY) < 0.01) return;
+            const kbX = player.knockbackX;
+            const kbY = player.knockbackY;
+            let targetX = player.x + player.dx + kbX;
+            let targetY = player.y + player.dy + kbY;
+            targetX = Math.max(player.radius, Math.min(gameWidth - player.radius, targetX));
+            targetY = Math.max(player.radius, Math.min(gameHeight - player.radius, targetY));
+            if (player.dx !== 0) {
+                if (!checkTreeCollision(targetX, player.y, player.radius)) {
+                    player.x = targetX;
+                }
+            }
+            if (player.dy !== 0) {
+                if (!checkTreeCollision(player.x, targetY, player.radius)) {
+                    player.y = targetY;
+                }
+            }
+            player.knockbackX *= 0.8;
+            player.knockbackY *= 0.8;
+        }
+
+        function showDynamicMessage(message, duration = 4000) {
+            dynamicMessageOverlay.textContent = message;
+            dynamicMessageOverlay.classList.add('visible');
+            setTimeout(() => {
+                dynamicMessageOverlay.classList.remove('visible');
+            }, duration);
+        }
+
+        function getLoreFragment() {
+            if (loreFragments.length > 0) {
+                const randomIndex = Math.floor(Math.random() * loreFragments.length);
+                const lore = loreFragments[randomIndex];
+                showDynamicMessage(`Echo: ${lore}`, 6000);
+            } else {
+                showDynamicMessage('The forest\'s whispers are quiet now...', 3000);
+            }
+        }
+
+        function getGlitchTaunt() {
+            if (aiTaunts.length > 0) {
+                const randomIndex = Math.floor(Math.random() * aiTaunts.length);
+                const taunt = aiTaunts[randomIndex];
+                showDynamicMessage(`Elon: "${taunt}"`, 3500);
+            } else {
+                showDynamicMessage('Elon: My influence spreads...', 3000);
+            }
+        }
+        
+        function handleFruitCollision() {
+            for (let i = fruits.length - 1; i >= 0; i--) {
+                const fruit = fruits[i];
+                const dist = Math.hypot(player.x - fruit.x, player.y - fruit.y);
+                if (dist < player.radius + fruitRadius) {
+                    fruits.splice(i, 1);
+                    if (comboTimer > 0) {
+                        comboCount = Math.min(10, comboCount + 1);
+                    } else {
+                        comboCount = 1;
+                    }
+                    comboTimer = comboWindow;
+                    const comboBonus = Math.min(maxComboBonus, (comboCount - 1) * 0.12);
+                    const gainedPoints = Math.max(1, Math.round(fruit.points * (1 + comboBonus)));
+                    score += gainedPoints;
+                    if (score >= scoreAtChallengeStart + AI_CHALLENGE_POINTS_NEEDED) {
+                        console.log('AI Challenge Met! Score:', score, 'Resetting timer and benchmark.');
+                        aiChallengeTimer = AI_CHALLENGE_DURATION;
+                        scoreAtChallengeStart = score;
+                    } else {
+                        console.log('Fruit collected (+' + fruit.points + 'pts), but 50pt goal for this interval not yet met. Timer continues. Score now: ' + score + ', Needed for reset: ' + (scoreAtChallengeStart + AI_CHALLENGE_POINTS_NEEDED));
+                    }
+                    if (fruit.isLoreShard) {
+                        magnetRemaining = magnetDuration;
+                        showDynamicMessage('Violet resonance! Echo Pull active.', 2600);
+                        getLoreFragment();
+                    }
+                    if (gameSoundsReady && collectSound) {
+                        try {
+                            collectSound.triggerAttackRelease(fruit.points === 20 ? 'E5' : (fruit.points === 10 ? 'D5' : 'C5'), '8n', Tone.now());
+                        } catch (e) {
+                            console.error('Error playing collect sound:', e);
+                        }
+                    }
+                    updateScoreDisplay();
+                    checkEnvironmentalTransformation();
+                    spawnFruit();
+                }
+            }
+            if (bonusFruit) {
+                const bonusDist = Math.hypot(player.x - bonusFruit.x, player.y - bonusFruit.y);
+                if (bonusDist < player.radius + bonusFruitRadius) {
+                    bonusFruit = null;
+                    riftCollected += 1;
+                    comboTimer = comboWindow;
+                    comboCount = Math.min(10, comboCount + 1);
+                    score += 5;
+                    showDynamicMessage(`Rift fruit ${riftCollected}/${riftTargetCount}`, 1400);
+                    updateScoreDisplay();
+                    if (riftCollected >= riftTargetCount) {
+                        endRift(true);
+                    }
+                }
+            }
+        }
+
+        function updateScoreDisplay() {
+            scoreDisplay.textContent = `Score: ${score} / ${winningScore}`;
+            if (streakDisplay) {
+                streakDisplay.textContent = `Streak: x${comboCount}`;
+            }
+        }
+
+        function updateDashDisplay() {
+            if (!dashDisplay) return;
+            if (dashCooldownRemaining > 0) {
+                dashDisplay.textContent = `Dash: ${Math.ceil(dashCooldownRemaining / 1000)}s`;
+            } else {
+                dashDisplay.textContent = 'Dash: Ready';
+            }
+        }
+
+        function stopSoundIntervals() {
+            if (typeof birdIntervalId !== 'undefined' && birdIntervalId) { clearInterval(birdIntervalId); birdIntervalId = null; }
+            if (typeof animalIntervalId1 !== 'undefined' && animalIntervalId1) { clearInterval(animalIntervalId1); animalIntervalId1 = null; }
+            if (typeof animalIntervalId2 !== 'undefined' && animalIntervalId2) { clearInterval(animalIntervalId2); animalIntervalId2 = null; }
+        }
+
+        function startBirdSounds() {
+            stopSoundIntervals();
+            birdIntervalId = setInterval(() => {
+                const safeLayer = currentForestLayer || 1;
+                const progression = (safeLayer - 1) / (maxForestLayer - 1);
+                let noteToPlay = 'C4';
+                let playBird = false;
+                if (safeLayer <= 2) { noteToPlay = 'C#3'; playBird = true; }
+                else if (safeLayer <= 4) { noteToPlay = 'E4'; playBird = true; }
+                else if (safeLayer < maxForestLayer) { noteToPlay = 'G#4'; playBird = true; }
+                if (playBird && score < winningScore && birdSynth && gameSoundsReady && birdSynth.volume.value > -Infinity) {
+                    try {
+                        const randomDelay = Math.random() * 0.7 + 0.1;
+                        birdSynth.triggerAttackRelease(noteToPlay, `${0.4 + progression * 0.3}n`, Tone.now() + randomDelay);
+                    } catch (e) {
+                        console.error('Error in bird sound interval:', e);
+                    }
+                }
+            }, currentBirdIntervalTime + Math.random() * 3000);
+        }
+
+        function startFinalAnimalSounds() {
+            if (!animalIntervalId1 && animalSynth1 && gameSoundsReady) {
+                animalIntervalId1 = setInterval(() => {
+                    if (Math.random() < 0.3 && animalSynth1.volume.value > -Infinity) {
+                        try {
+                            animalSynth1.triggerAttackRelease('G2', '1n', Tone.now() + Math.random() * 0.5 + 0.05);
+                        } catch (e) {
+                            console.error('Error in animalSynth1 interval:', e);
+                        }
+                    }
+                }, 5000 + Math.random() * 2000);
+            }
+            if (!animalIntervalId2 && animalSynth2 && gameSoundsReady) {
+                animalIntervalId2 = setInterval(() => {
+                    if (Math.random() < 0.4 && animalSynth2.volume.value > -Infinity) {
+                        try {
+                            animalSynth2.triggerAttackRelease('C4', '2n', Tone.now() + Math.random() * 0.3 + 0.05);
+                        } catch (e) {
+                            console.error('Error in animalSynth2 interval:', e);
+                        }
+                    }
+                }, 3500 + Math.random() * 1500);
+            }
+        }
+
+        function updateAmbientSounds() {
+            if (!gameSoundsReady) return;
+            if (ambientMusicLoop && ambientMusicLoop.state === 'started' && (currentForestLayer || 1) < maxForestLayer) {
+                ambientMusicLoop.stop();
+                Tone.Transport.clear(ambientMusicLoop);
+            }
+            stopSoundIntervals();
+            const safeLayer = currentForestLayer || 1;
+            const progression = (safeLayer - 1) / (maxForestLayer - 1);
+            const noiseVolume = -40 + 15 * progression;
+            const filterFreq = 70 + 430 * progression;
+            currentBirdIntervalTime = 7500 - 4500 * progression;
+            if (safeLayer >= maxForestLayer && score >= winningScore) {
+                if (ambientNoise && ambientNoise.volume) ambientNoise.volume.value = -30;
+                if (noiseFilter && noiseFilter.baseFrequency) noiseFilter.baseFrequency.value = 600;
+                if (birdSynth && birdSynth.volume) birdSynth.volume.value = -18;
+                currentBirdIntervalTime = 2000;
+                startBirdSounds();
+                startFinalAnimalSounds();
+                if (ambientMusicLoop && ambientMusicLoop.state !== 'started') {
+                    Tone.Transport.bpm.value = 60;
+                    ambientMusicLoop.start(0);
+                }
+                if (happyPianoSynth) {
+                    const now = Tone.now();
+                    const melody = ['C4', 'E4', 'G4', 'C5', 'G4', 'E4', 'C4', 'D4', 'F4', 'A4', 'C5', 'A4', 'F4', 'D4', 'E4', 'G4', 'B4', 'D5', 'C5'];
+                    melody.forEach((note, index) => {
+                        happyPianoSynth.triggerAttackRelease(note, '8n', now + index * 0.25, 0.8);
+                    });
+                }
+                return;
+            }
+            if (ambientNoise && ambientNoise.volume) ambientNoise.volume.value = noiseVolume;
+            if (noiseFilter && noiseFilter.baseFrequency) noiseFilter.baseFrequency.value = filterFreq;
+            if (score < winningScore) {
+                if (birdSynth && birdSynth.volume) birdSynth.volume.value = -24 + 6 * progression;
+                startBirdSounds();
+            } else {
+                if (birdSynth && birdSynth.volume) birdSynth.volume.value = -Infinity;
+            }
+        }
+        
+        function checkEnvironmentalTransformation() {
+            let targetLayerBasedOnScore = Math.min(maxForestLayer, Math.floor(score / pointsPerLayer) + 1);
+            if (score >= winningScore) targetLayerBasedOnScore = maxForestLayer;
+            if (score < 0) targetLayerBasedOnScore = 1;
+
+            if (currentForestLayer < targetLayerBasedOnScore) {
+                currentForestLayer = targetLayerBasedOnScore;
+                console.log('Layer upgraded by score. New layer:', currentForestLayer, 'Score:', score);
+                updateAmbientSounds();
+                adjustWispCount();
+            }
+
+            if (score >= winningScore && !messageShown) {
+                messageDisplay.textContent = 'You have saved the EchoVerse from Elons cold logic. The forest breathes again...';
+                messageDisplayContainer.style.display = 'flex';
+                messageShown = true;
+                gameEnded = true;
+                currentForestLayer = maxForestLayer;
+                if (aiChallengeTimerDisplay) aiChallengeTimerDisplay.style.display = 'none';
+                updateAmbientSounds();
+            } else if (score < winningScore && messageShown) {
+                messageDisplayContainer.style.display = 'none';
+                messageShown = false;
+                gameEnded = false;
+            }
+        }
+
+        const keysPressed = {};
+        function handleMovementInput() {
+            player.dx = 0;
+            player.dy = 0;
+            const speedBoost = dashActiveRemaining > 0 ? dashSpeedMultiplier : 1;
+            const speed = player.baseSpeed * speedBoost;
+            if (keysPressed['arrowright'] || keysPressed.d) player.dx = speed;
+            if (keysPressed['arrowleft'] || keysPressed.a) player.dx = -speed;
+            if (keysPressed['arrowup'] || keysPressed.w) player.dy = -speed;
+            if (keysPressed['arrowdown'] || keysPressed.s) player.dy = speed;
+            if (player.dx !== 0 && player.dy !== 0) {
+                const factor = speed / Math.sqrt(2);
+                player.dx = (player.dx > 0 ? 1 : -1) * factor;
+                player.dy = (player.dy > 0 ? 1 : -1) * factor;
+            }
+            if (player.dx !== 0 || player.dy !== 0) {
+                const length = Math.max(1, Math.hypot(player.dx, player.dy));
+                player.lastMoveX = player.dx / length;
+                player.lastMoveY = player.dy / length;
+            }
+        }
+
+        function tryDash() {
+            if (!gameStarted || gameEnded) return;
+            if (dashCooldownRemaining > 0 || dashActiveRemaining > 0) return;
+            if (!player.lastMoveX && !player.lastMoveY) return;
+            dashActiveRemaining = dashDuration;
+            dashCooldownRemaining = dashCooldown;
+            showDynamicMessage('Echo Dash!', 900);
+        }
+
+        function keyDown(e) {
+            if (!gameStarted) return;
+            keysPressed[e.key.toLowerCase()] = true;
+            if (e.key === ' ') {
+                tryDash();
+            }
+            if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd', ' '].includes(e.key.toLowerCase())) {
+                e.preventDefault();
+            }
+        }
+
+        function keyUp(e) {
+            keysPressed[e.key.toLowerCase()] = false;
+        }
+
+        document.addEventListener('keydown', keyDown);
+        document.addEventListener('keyup', keyUp);
+
+        let lastTimestamp = 0;
+        function gameLoop(timestamp) {
+            if (!gameStarted || gameEnded) {
+                if (requestId) cancelAnimationFrame(requestId);
+                requestId = null;
+                return;
+            }
+
+            const deltaTime = timestamp - (lastTimestamp || timestamp);
+            lastTimestamp = timestamp;
+
+            if (comboTimer > 0) {
+                comboTimer -= deltaTime;
+                if (comboTimer <= 0) {
+                    comboTimer = 0;
+                    comboCount = 1;
+                    updateScoreDisplay();
+                }
+            }
+            if (dashCooldownRemaining > 0) {
+                dashCooldownRemaining = Math.max(0, dashCooldownRemaining - deltaTime);
+            }
+            if (dashActiveRemaining > 0) {
+                dashActiveRemaining = Math.max(0, dashActiveRemaining - deltaTime);
+            }
+            if (magnetRemaining > 0) {
+                magnetRemaining = Math.max(0, magnetRemaining - deltaTime);
+            }
+            if (player.invulnRemaining > 0) {
+                player.invulnRemaining = Math.max(0, player.invulnRemaining - deltaTime);
+            }
+            updateDashDisplay();
+            if (!riftActive && riftCooldownRemaining > 0) {
+                riftCooldownRemaining = Math.max(0, riftCooldownRemaining - deltaTime);
+            }
+            if (!riftActive && riftCooldownRemaining === 0 && score < winningScore) {
+                startRift();
+            }
+            if (riftActive) {
+                riftTimer -= deltaTime;
+                if (riftTimer <= 0) {
+                    endRift(false);
+                } else if (!bonusFruit && riftTimer < riftDuration - 1200) {
+                    maybeSpawnBonusFruit();
+                }
+            }
+
+            if (score < winningScore) {
+                aiChallengeTimer -= deltaTime;
+                if (aiChallengeTimerDisplay) {
+                    const secondsLeft = Math.max(0, Math.ceil(aiChallengeTimer / 1000));
+                    aiChallengeTimerDisplay.textContent = `Corruption in: ${secondsLeft}s`;
+                }
+
+                if (aiChallengeTimer <= 0) {
+                    if (score < scoreAtChallengeStart + AI_CHALLENGE_POINTS_NEEDED) {
+                        if (currentForestLayer > 1) {
+                            currentForestLayer--;
+                            score = Math.max(0, (currentForestLayer - 1) * pointsPerLayer);
+                            updateScoreDisplay();
+                            console.log("AI 'Elon' re-pixelated! New layer:", currentForestLayer, 'Score rolled back to:', score);
+                            getGlitchTaunt();
+                            updateAmbientSounds();
+                        }
+                    } else {
+                        console.log('AI Challenge Met at timer end. Score:', score);
+                    }
+                    aiChallengeTimer = AI_CHALLENGE_DURATION;
+                    scoreAtChallengeStart = score;
+                }
+            } else if (aiChallengeTimerDisplay) {
+                aiChallengeTimerDisplay.style.display = 'none';
+            }
+            
+            checkEnvironmentalTransformation();
+            handleMovementInput();
+            movePlayer();
+            updateWisps(deltaTime);
+            checkWispCollisions();
+            applyMagnetToFruits(deltaTime);
+            handleFruitCollision();
+            drawForest();
+            drawRift();
+            drawWisps();
+            drawFruits();
+            drawPlayer();
+            requestId = requestAnimationFrame(gameLoop);
+        }
+        
+        onboardingScreen.addEventListener('click', async function initialUserGesture() {
+            onboardingScreen.removeEventListener('click', initialUserGesture);
+            onboardingScreen.classList.add('no-cursor');
+            console.log('Initial click on onboarding screen registered.');
+            await initOnboardingAudio();
+            typeCharacter();
+        }, { once: true });
+    </script>
+</body>
+</html>
