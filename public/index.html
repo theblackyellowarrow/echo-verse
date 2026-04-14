@@ -355,6 +355,21 @@
         #beginRestorationButton.hidden, #startGameButton.hidden {
              opacity: 0 !important; pointer-events: none !important; display: none !important;
         }
+        #skipIntroButton {
+            background: transparent;
+            color: #f4f7ff;
+            border: 1px solid rgba(160, 170, 255, 0.35);
+            border-radius: 999px;
+            font-size: 13px;
+            padding: 8px 14px;
+            margin-top: 14px;
+            cursor: pointer;
+            letter-spacing: 0.4px;
+            box-shadow: 0 0 16px rgba(69, 243, 255, 0.25);
+        }
+        #skipIntroButton:hover {
+            border-color: rgba(255,255,255,0.6);
+        }
         #dynamicMessageOverlay { 
             position: absolute;
             bottom: 10px; 
@@ -443,6 +458,7 @@
             </div>
             <button id="beginRestorationButton">Learn About Fruits</button> 
             <button id="startGameButton" class="hidden">Start Game</button>
+            <button id="skipIntroButton">Skip Intro</button>
         </div>
         <div id="tapToContinueOverlay">
             <div class="tap-card">Tap to continue</div>
@@ -471,6 +487,7 @@
         const fruitIntroContainer = document.getElementById('fruitIntroContainer');
         const beginRestorationButton = document.getElementById('beginRestorationButton');
         const startGameButton = document.getElementById('startGameButton');
+        const skipIntroButton = document.getElementById('skipIntroButton');
         const uiOverlay = document.getElementById('uiOverlay');
         const dynamicMessageOverlay = document.getElementById('dynamicMessageOverlay');
         const tapToContinueOverlay = document.getElementById('tapToContinueOverlay');
@@ -582,12 +599,12 @@
         var endLoopInstance = null;
         let currentBirdIntervalTime = 7500;
 
-        const onboardingLines = ['An AI called Elon has broken this digital forest.','It\'s now just pixelated echoes of what it once was.','You are a Restorer. You can fix this place.','Find the glowing Resonance Fruits to heal the EchoVerse.','Corruption Wisps hunt you - dodge or dash through them (Space).','Resonance Rifts open: collect their fruits in time to seal them.','Glowing trees, the Pathfinder Glyphs, show safe paths.','Use WASD or Arrow Keys to move. But hurry, Elon is always watching.'];
+        const onboardingLines = ['A corrupt AI broke this digital forest.','Collect Resonance Fruits to restore it.','Dodge Wisps and dash (Space) to survive.'];
         let currentParagraphIndex = 0;
         let currentCharIndex = 0;
-        const typingSpeed = 55;
-        const interLinePause = 700;
-        const preButtonPause = 1000;
+        const typingSpeed = 25;
+        const interLinePause = 250;
+        const preButtonPause = 350;
         let onboardingStartedAt = 0;
         let onboardingEscalated = false;
 
@@ -786,7 +803,7 @@
             }, 500);
         });
 
-        startGameButton.addEventListener('click', () => {
+        function startGameNow() {
             hideTapToContinue();
             onboardingScreen.classList.add('fade-out');
             initGameAudio().then(() => {
@@ -798,10 +815,21 @@
                 initGame();
             });
             setTimeout(() => {
+                onboardingScreen.style.display = 'none';
                 canvas.classList.add('visible');
                 uiOverlay.classList.add('visible');
             }, 700);
+        }
+
+        startGameButton.addEventListener('click', () => {
+            startGameNow();
         });
+
+        if (skipIntroButton) {
+            skipIntroButton.addEventListener('click', () => {
+                startGameNow();
+            });
+        }
 
         restartGameButton.addEventListener('click', () => {
             console.log('Restart Game button clicked.');
@@ -1690,9 +1718,15 @@
         setInterval(() => {
             if (!gameStarted && onboardingStartedAt > 0 && !beginRestorationButton.classList.contains('visible')) {
                 const elapsed = performance.now() - onboardingStartedAt;
-                if (elapsed > 8000) {
+                if (elapsed > 3500) {
                     beginRestorationButton.classList.add('visible');
                     showTapToContinue();
+                }
+            }
+            if (!gameStarted && onboardingStartedAt > 0) {
+                const elapsed = performance.now() - onboardingStartedAt;
+                if (elapsed > 12000 && !onboardingEscalated) {
+                    startGameNow();
                 }
             }
         }, 1000);
