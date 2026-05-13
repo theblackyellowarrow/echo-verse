@@ -51,6 +51,10 @@ const player = {
   dashTimer: 0,
   invulnerable: false,
   invulnTimer: 0,
+  repelActive: false,
+  repelTimer: 0,
+  speedBoostActive: false,
+  speedBoostTimer: 0,
 };
 
 let fruits = [];
@@ -64,6 +68,9 @@ const pathfinderTreeChance = CONFIG.TREES.pathfinderChance;
 
 let wisps = [];
 let wispSpawnTimer = 0;
+
+let powerups = [];
+let powerupTimer = 0;
 
 let rift = null;
 let riftSpawnTimer = 0;
@@ -145,6 +152,8 @@ function initGame(startingLevel = 0) {
   gameEnded = false;
   wisps = [];
   wispSpawnTimer = lvl.wispSpawnInterval + 2000;
+  powerups = [];
+  powerupTimer = CONFIG.POWERUPS.spawnInterval + 3000;
   rift = null;
   riftSpawnTimer = lvl.riftsEnabled ? (lvl.riftSpawnInterval || 35000) : 999999;
   doubleFruitActive = false;
@@ -165,6 +174,10 @@ function initGame(startingLevel = 0) {
   player.dashTimer = 0;
   player.invulnerable = false;
   player.invulnTimer = 0;
+  player.repelActive = false;
+  player.repelTimer = 0;
+  player.speedBoostActive = false;
+  player.speedBoostTimer = 0;
 
   updateScoreDisplay();
   messageDisplayContainer.style.display = 'none';
@@ -449,6 +462,35 @@ function spawnWisp() {
   }
 }
 
+function spawnPowerup() {
+  if (powerups.length >= 1) return;
+  const types = Object.entries(CONFIG.POWERUPS.types);
+  const [key, def] = types[Math.floor(Math.random() * types.length)];
+  let px, py, valid;
+  let attempts = 0;
+  do {
+    valid = true;
+    px = 30 + Math.random() * (gameWidth - 60);
+    py = 30 + Math.random() * (gameHeight - 60);
+    if (Math.hypot(px - player.x, py - player.y) < 80) valid = false;
+    if (valid) {
+      for (const t of trees) {
+        if (t.type === 'guardian' && Math.hypot(px - t.x, py - t.y) < 40) { valid = false; break; }
+      }
+    }
+    attempts++;
+  } while (!valid && attempts < 100);
+  if (valid) {
+    powerups.push({
+      x: px, y: py, type: key,
+      name: def.name, colorHex: def.colorHex, glow: def.glow,
+      symbol: key === 'repel' ? 'S' : 'Z',
+      duration: def.duration,
+      ...(def.multiplier ? { multiplier: def.multiplier } : {}),
+    });
+  }
+}
+
 function spawnRift() {
   const lvl = getCurrentLevelConfig();
   if (rift || !lvl.riftsEnabled) return;
@@ -579,15 +621,27 @@ function updatePlayerTimers(dt) {
       player.invulnTimer = 0;
     }
   }
-  if (dashCooldownDisplay) {
-    if (player.dashCooldown > 0) {
-      const secs = Math.ceil(player.dashCooldown / 1000);
-      dashCooldownDisplay.textContent = `Dash: ${secs}s`;
-    } else if (player.isDashing) {
-      dashCooldownDisplay.textContent = 'DASHING!';
-    } else {
-      dashCooldownDisplay.textContent = 'Dash: Ready';
+  if (player.repelActive) {
+    player.repelTimer -= dt;
+    if (player.repelTimer <= 0) {
+      player.repelActive = false;
+      player.repelTimer = 0;
     }
+  }
+  if (player.speedBoostActive) {
+    player.speedBoostTimer -= dt;
+    if (player.speedBoostTimer <= 0) {
+      player.speedBoostActive = false;
+      player.speedBoostTimer = 0;
+    }
+  }
+  if (dashCooldownDisplay) {
+    let status = 'Dash: Ready';
+    if (player.dashCooldown > 0) status = `Dash: ${Math.ceil(player.dashCooldown / 1000)}s`;
+    else if (player.isDashing) status = 'DASHING!';
+    if (player.repelActive) status += ' [Repel]';
+    if (player.speedBoostActive) status += ' [Speed]';
+    dashCooldownDisplay.textContent = status;
   }
 }
 
@@ -596,15 +650,26 @@ function drawPlayer() {
   if (player.invulnerable) {
     ctx.globalAlpha = 0.5 + Math.sin(Date.now() / 50) * 0.3;
   }
+  if (player.repelActive) {
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, player.radius + 10, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(69, 243, 255, ${0.3 + Math.sin(Date.now() / 200) * 0.2})`;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+  if (player.speedBoostActive) {
+    ctx.shadowColor = 'rgba(156, 255, 87, 0.7)';
+    ctx.shadowBlur = 18;
+  }
   if (player.isDashing) {
     ctx.shadowColor = 'rgba(69, 243, 255, 0.9)';
     ctx.shadowBlur = 25;
   }
   ctx.beginPath();
   ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
-  ctx.fillStyle = player.color;
-  ctx.shadowColor = player.isDashing ? 'rgba(69, 243, 255, 0.9)' : 'rgba(255, 223, 0, 0.8)';
-  ctx.shadowBlur = player.isDashing ? 25 : 12;
+  ctx.fillStyle = player.speedBoostActive ? '#a0ff60' : player.color;
+  ctx.shadowColor = player.isDashing ? 'rgba(69, 243, 255, 0.9)' : (player.speedBoostActive ? 'rgba(156, 255, 87, 0.7)' : 'rgba(255, 223, 0, 0.8)');
+  ctx.shadowBlur = player.isDashing ? 25 : (player.speedBoostActive ? 18 : 12);
   ctx.fill();
   ctx.shadowBlur = 0;
   ctx.closePath();
@@ -655,6 +720,31 @@ function drawWisps() {
     ctx.arc(wisp.x - r * 0.25, wisp.y - r * 0.25, r * 0.25, 0, Math.PI * 2);
     ctx.fill();
 
+    ctx.restore();
+  });
+}
+
+function drawPowerups() {
+  powerups.forEach((pw) => {
+    ctx.save();
+    const pulse = 1 + Math.sin(Date.now() / 350) * 0.15;
+    const r = 12 * pulse;
+    const gradient = ctx.createRadialGradient(pw.x, pw.y, r * 0.1, pw.x, pw.y, r * 1.3);
+    gradient.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+    gradient.addColorStop(0.4, pw.glow.replace('0.8', '1'));
+    gradient.addColorStop(0.7, pw.glow);
+    gradient.addColorStop(1, pw.glow.replace('0.8', '0'));
+    ctx.fillStyle = gradient;
+    ctx.shadowColor = pw.glow.replace('0.8', '0.9');
+    ctx.shadowBlur = 18;
+    ctx.beginPath();
+    ctx.arc(pw.x, pw.y, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = pw.colorHex;
+    ctx.font = '9px "Press Start 2P"';
+    ctx.textAlign = 'center';
+    ctx.fillText(pw.symbol || '?', pw.x, pw.y + 3);
     ctx.restore();
   });
 }
@@ -800,6 +890,7 @@ function movePlayer() {
   if (!player.dx && !player.dy) return;
   let currentSpeed = player.speed;
   if (player.isDashing) currentSpeed *= CONFIG.DASH.speedMultiplier;
+  if (player.speedBoostActive) currentSpeed *= CONFIG.POWERUPS.types.speed.multiplier;
 
   let targetX = player.x + player.dx * (currentSpeed / player.speed);
   let targetY = player.y + player.dy * (currentSpeed / player.speed);
@@ -836,8 +927,13 @@ function handleWispCollision() {
     const wisp = wisps[i];
     const dist = Math.hypot(player.x - wisp.x, player.y - wisp.y);
     if (dist < player.radius + wisp.radius) {
-      if (player.invulnerable) {
+      if (player.invulnerable || player.repelActive) {
         wisps.splice(i, 1);
+        if (player.isDashing || player.repelActive) {
+          score += CONFIG.DASH.wispKillPoints;
+          updateScoreDisplay();
+          checkEnvironmentalTransformation();
+        }
         spawnFruitBurst(wisp.x, wisp.y, 'rgba(255, 100, 200, 0.8)');
         continue;
       }
@@ -870,6 +966,30 @@ function handleRiftCollision() {
     updateScoreDisplay();
     checkEnvironmentalTransformation();
     setTimeout(() => { rift = null; }, 500);
+  }
+}
+
+function handlePowerupCollision() {
+  for (let i = powerups.length - 1; i >= 0; i--) {
+    const pw = powerups[i];
+    const dist = Math.hypot(player.x - pw.x, player.y - pw.y);
+    if (dist < player.radius + 14) {
+      powerups.splice(i, 1);
+      if (pw.type === 'repel') {
+        player.repelActive = true;
+        player.repelTimer = pw.duration;
+        showDynamicMessage('Wisp Repellent! Wisps destroyed on contact.', 2500);
+      } else if (pw.type === 'speed') {
+        player.speedBoostActive = true;
+        player.speedBoostTimer = pw.duration;
+        showDynamicMessage('Speed Boost!', 2000);
+      }
+      spawnFruitBurst(pw.x, pw.y, pw.colorHex);
+      if (gameSoundsReady && collectSound) {
+        try { collectSound.triggerAttackRelease('G5', '8n', Tone.now()); }
+        catch (e) { /* silent */ }
+      }
+    }
   }
 }
 
@@ -1094,12 +1214,19 @@ function gameLoop(timestamp) {
     }
   }
 
+  powerupTimer -= deltaTime;
+  if (powerupTimer <= 0) {
+    powerupTimer = CONFIG.POWERUPS.spawnInterval + Math.random() * 8000;
+    spawnPowerup();
+  }
+
   checkEnvironmentalTransformation();
   handleMovementInput();
   movePlayer();
   handleFruitCollision();
   handleWispCollision();
   handleRiftCollision();
+  handlePowerupCollision();
   updateWisps(deltaTime);
   updateParticles(deltaTime);
 
@@ -1107,6 +1234,7 @@ function gameLoop(timestamp) {
   drawFruits();
   drawRift();
   drawWisps();
+  drawPowerups();
   drawParticles();
   drawPlayer();
 

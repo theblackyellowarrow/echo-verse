@@ -10,20 +10,21 @@ const CONFIG = {
   },
 
   DASH: {
-    speedMultiplier: 3.5,
-    duration: 250,
-    cooldown: 2000,
-    trailCount: 8,
+    speedMultiplier: 4.0,
+    duration: 300,
+    cooldown: 1200,
+    trailCount: 10,
     trailLife: 300,
+    wispKillPoints: 5,
   },
 
   FRUIT: {
     radius: 12,
-    count: 4,
+    count: 5,
     types: {
-      crimson: { name: 'Crimson Fruit', colorHex: '#DC143C', glow: 'rgba(220, 20, 60, 0.7)', points: 5, rarity: 0.6 },
-      amber:   { name: 'Amber Fruit',   colorHex: '#FF8C00', glow: 'rgba(255, 140, 0, 0.7)', points: 10, rarity: 0.3 },
-      violet:  { name: 'Violet Fruit',  colorHex: '#9400D3', glow: 'rgba(148, 0, 211, 0.7)', points: 20, rarity: 0.1, isLoreShard: true },
+      crimson: { name: 'Crimson Fruit', colorHex: '#DC143C', glow: 'rgba(220, 20, 60, 0.7)', points: 5, rarity: 0.35 },
+      amber:   { name: 'Amber Fruit',   colorHex: '#FF8C00', glow: 'rgba(255, 140, 0, 0.7)', points: 10, rarity: 0.40 },
+      violet:  { name: 'Violet Fruit',  colorHex: '#9400D3', glow: 'rgba(148, 0, 211, 0.7)', points: 20, rarity: 0.25, isLoreShard: true },
     },
   },
 
@@ -41,8 +42,16 @@ const CONFIG = {
   },
 
   AI_CHALLENGE: {
-    duration: 40000,
-    pointsNeeded: 50,
+    duration: 30000,
+    pointsNeeded: 40,
+  },
+
+  POWERUPS: {
+    spawnInterval: 18000,
+    types: {
+      repel: { name: 'Wisp Repellent', colorHex: '#45f3ff', glow: 'rgba(69, 243, 255, 0.8)', duration: 8000 },
+      speed: { name: 'Speed Boost',    colorHex: '#9cff57', glow: 'rgba(156, 255, 87, 0.8)', duration: 5000, multiplier: 1.8 },
+    },
   },
 
   LEVELS: [
@@ -60,10 +69,10 @@ const CONFIG = {
       canopyDarkEnd: [35, 70, 35],
       canopyLightStart: [28, 55, 28],
       canopyLightEnd: [50, 85, 50],
-      wispMax: 2,
-      wispSpeedRatio: 0.50,
-      wispSpawnInterval: 15000,
-      wispDamage: 5,
+      wispMax: 3,
+      wispSpeedRatio: 0.60,
+      wispSpawnInterval: 9000,
+      wispDamage: 8,
       riftsEnabled: false,
     },
     {
@@ -80,13 +89,13 @@ const CONFIG = {
       canopyDarkEnd: [45, 50, 65],
       canopyLightStart: [35, 40, 45],
       canopyLightEnd: [55, 60, 75],
-      wispMax: 4,
-      wispSpeedRatio: 0.68,
-      wispSpawnInterval: 10000,
-      wispDamage: 10,
+      wispMax: 5,
+      wispSpeedRatio: 0.72,
+      wispSpawnInterval: 7000,
+      wispDamage: 12,
       riftsEnabled: true,
-      riftSpawnInterval: 35000,
-      riftDuration: 15000,
+      riftSpawnInterval: 28000,
+      riftDuration: 14000,
       riftReward: 25,
     },
     {
@@ -103,12 +112,12 @@ const CONFIG = {
       canopyDarkEnd: [75, 55, 30],
       canopyLightStart: [65, 45, 25],
       canopyLightEnd: [95, 65, 40],
-      wispMax: 6,
-      wispSpeedRatio: 0.82,
-      wispSpawnInterval: 7000,
-      wispDamage: 15,
+      wispMax: 7,
+      wispSpeedRatio: 0.85,
+      wispSpawnInterval: 5000,
+      wispDamage: 18,
       riftsEnabled: true,
-      riftSpawnInterval: 25000,
+      riftSpawnInterval: 22000,
       riftDuration: 12000,
       riftReward: 30,
     },
