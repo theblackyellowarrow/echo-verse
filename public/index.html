@@ -12,6 +12,7 @@
     <div id="gameContainer" role="application" aria-label="EchoVerse game area">
         <div id="gameHeader">
             <div class="headerColumn">
+                <div id="levelNameDisplay">The Silent Glade</div>
                 <div id="scoreDisplay">Score: 0</div>
                 <div id="dashCooldownDisplay">Dash: Ready</div>
             </div>
@@ -50,6 +51,10 @@
                 <button id="restartGameButton" type="button">Restore More</button>
             </div>
             <div id="dynamicMessageOverlay" role="status" aria-live="polite"></div>
+            <div id="levelTransitionOverlay">
+                <div id="levelTransitionTitle"></div>
+                <div id="levelTransitionSub"></div>
+            </div>
         </div>
     </div>
     <script src="config.js"></script>

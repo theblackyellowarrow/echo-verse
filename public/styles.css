@@ -175,6 +175,16 @@ canvas.visible { opacity: 1; }
 }
 #uiOverlay.visible { opacity: 1; }
 
+#levelNameDisplay {
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--accent-cyan);
+  text-shadow: 0 0 10px rgba(69, 243, 255, 0.4);
+  padding: 0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
 #scoreDisplay {
   font-size: 16px;
   line-height: 1.5;
@@ -473,3 +483,39 @@ canvas.visible { opacity: 1; }
   text-transform: uppercase;
 }
 #dynamicMessageOverlay.visible { opacity: 1; }
+
+#levelTransitionOverlay {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 5, 10, 0.85);
+  z-index: 35;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease-in;
+}
+#levelTransitionOverlay.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+#levelTransitionTitle {
+  font-family: "Press Start 2P", "Courier New", monospace;
+  font-size: 24px;
+  color: var(--accent-cyan);
+  text-shadow: 0 0 20px rgba(69, 243, 255, 0.7);
+  margin-bottom: 15px;
+  text-transform: uppercase;
+}
+#levelTransitionSub {
+  font-family: "Press Start 2P", "Courier New", monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+  text-shadow: 0 0 8px rgba(177, 183, 212, 0.3);
+  text-transform: uppercase;
+  text-align: center;
+  max-width: 80%;
+}

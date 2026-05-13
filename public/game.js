@@ -33,6 +33,8 @@ window.addEventListener('resize', updateGameDimensions);
 
 let score = 0;
 let currentForestLayer = 1;
+let currentLevel = 0;
+let levelTransition = null;
 let messageShown = false;
 let gameStarted = false;
 let gameEnded = false;
@@ -132,6 +134,8 @@ function typeCharacter() {
 function initGame() {
   score = 0;
   currentForestLayer = 1;
+  currentLevel = 0;
+  levelTransition = null;
   messageShown = false;
   gameEnded = false;
   wisps = [];
@@ -194,7 +198,7 @@ beginRestorationButton.addEventListener('click', () => {
   }, 500);
 });
 
-startGameButton.addEventListener('click', () => {
+function startGameButtonHandler() {
   onboardingScreen.classList.add('fade-out');
   initGameAudio().then(() => {
     gameStarted = true;
@@ -208,7 +212,50 @@ startGameButton.addEventListener('click', () => {
     canvas.classList.add('visible');
     uiOverlay.classList.add('visible');
   }, 700);
-});
+}
+
+startGameButton.addEventListener('click', startGameButtonHandler);
+
+function getLevelForScore(s) {
+  for (let i = CONFIG.LEVELS.length - 1; i >= 0; i--) {
+    if (s >= CONFIG.LEVELS[i].scoreMin) return i;
+  }
+  return 0;
+}
+
+function getCurrentLevelConfig() {
+  return CONFIG.LEVELS[currentLevel] || CONFIG.LEVELS[0];
+}
+
+function triggerLevelTransition(newLevel) {
+  const lvl = CONFIG.LEVELS[newLevel];
+  levelTransition = {
+    level: newLevel,
+    name: lvl.name,
+    subheader: lvl.subheader,
+    timer: 2500,
+  };
+  const levelOverlay = document.getElementById('levelTransitionOverlay');
+  const levelTitle = document.getElementById('levelTransitionTitle');
+  const levelSub = document.getElementById('levelTransitionSub');
+  if (levelOverlay && levelTitle && levelSub) {
+    levelTitle.textContent = lvl.name;
+    levelSub.textContent = lvl.subheader;
+    levelOverlay.classList.add('visible');
+  }
+  currentLevel = newLevel;
+  uiOverlay.classList.add('visible');
+  if (gameSoundsReady && riftSynth) {
+    try { riftSynth.triggerAttackRelease('C5', '2n', Tone.now()); }
+    catch (e) { /* silent */ }
+  }
+}
+
+function endLevelTransition() {
+  const levelOverlay = document.getElementById('levelTransitionOverlay');
+  if (levelOverlay) levelOverlay.classList.remove('visible');
+  levelTransition = null;
+}
 
 restartGameButton.addEventListener('click', () => {
   messageDisplayContainer.style.display = 'none';
@@ -300,7 +347,8 @@ function spawnFruit() {
 }
 
 function spawnWisp() {
-  if (wisps.length >= CONFIG.WISPS.maxCount) return;
+  const lvl = getCurrentLevelConfig();
+  if (wisps.length >= lvl.wispMax) return;
   let wx, wy;
   let valid = false;
   let attempts = 0;
@@ -318,26 +366,28 @@ function spawnWisp() {
     attempts++;
   } while (!valid && attempts < 50);
   if (valid) {
+    const lvl = getCurrentLevelConfig();
     wisps.push({
-      x: wx, y: wy, radius: CONFIG.WISPS.radius,
-      speed: player.speed * CONFIG.WISPS.speedRatio,
+      x: wx, y: wy, radius: 10,
+      speed: player.speed * lvl.wispSpeedRatio,
       phase: Math.random() * Math.PI * 2,
     });
   }
 }
 
 function spawnRift() {
-  if (rift) return;
+  const lvl = getCurrentLevelConfig();
+  if (rift || !lvl.riftsEnabled) return;
   let rx, ry, valid;
   let attempts = 0;
   do {
     valid = true;
-    rx = CONFIG.RIFTS.radius * 2 + Math.random() * (gameWidth - CONFIG.RIFTS.radius * 4);
-    ry = CONFIG.RIFTS.radius * 2 + Math.random() * (gameHeight - CONFIG.RIFTS.radius * 4);
+    rx = CONFIG.RIFT_BASE.radius * 2 + Math.random() * (gameWidth - CONFIG.RIFT_BASE.radius * 4);
+    ry = CONFIG.RIFT_BASE.radius * 2 + Math.random() * (gameHeight - CONFIG.RIFT_BASE.radius * 4);
     if (Math.hypot(rx - player.x, ry - player.y) < 100) valid = false;
     if (valid) {
       for (const t of trees) {
-        if (Math.hypot(rx - t.x, ry - t.y) < CONFIG.RIFTS.radius + 35) { valid = false; break; }
+        if (Math.hypot(rx - t.x, ry - t.y) < CONFIG.RIFT_BASE.radius + 35) { valid = false; break; }
       }
     }
     attempts++;
@@ -345,10 +395,11 @@ function spawnRift() {
   if (valid) {
     rift = {
       x: rx, y: ry,
-      radius: CONFIG.RIFTS.radius,
-      timer: CONFIG.RIFTS.duration,
+      radius: CONFIG.RIFT_BASE.radius,
+      timer: lvl.riftDuration || CONFIG.RIFT_BASE.doubleFruitDuration,
       sealed: false,
       phase: 0,
+      reward: lvl.riftReward || 25,
     };
     playRiftSpawnSound();
     showDynamicMessage('A Resonance Rift has opened! Seal it quickly!', 2500);
@@ -593,38 +644,31 @@ function getTreeSize(layer, type = 'guardian') {
 }
 
 function drawForest() {
+  const lvl = getCurrentLevelConfig();
   const safeLayer = Math.max(1, Math.min(CONFIG.FOREST.maxLayer, currentForestLayer || 1));
-  const progression = (safeLayer - 1) / (CONFIG.FOREST.maxLayer - 1);
-  const initialBg = [10, 20, 10];
-  const finalBg = [53, 90, 53];
-  const r = Math.round(initialBg[0] + (finalBg[0] - initialBg[0]) * progression);
-  const g = Math.round(initialBg[1] + (finalBg[1] - initialBg[1]) * progression);
-  const b = Math.round(initialBg[2] + (finalBg[2] - initialBg[2]) * progression);
+  const layersInLevel = (lvl.scoreMax - lvl.scoreMin) / CONFIG.FOREST.pointsPerLayer;
+  const layerInLevel = Math.max(1, Math.min(layersInLevel, safeLayer - (lvl.scoreMin / CONFIG.FOREST.pointsPerLayer) + 1));
+  const progression = (layerInLevel - 1) / (layersInLevel - 1);
+  const r = Math.round(lvl.bgStart[0] + (lvl.bgEnd[0] - lvl.bgStart[0]) * progression);
+  const g = Math.round(lvl.bgStart[1] + (lvl.bgEnd[1] - lvl.bgStart[1]) * progression);
+  const b = Math.round(lvl.bgStart[2] + (lvl.bgEnd[2] - lvl.bgStart[2]) * progression);
   ctx.fillStyle = `rgb(${r},${g},${b})`;
   ctx.fillRect(0, 0, gameWidth, gameHeight);
 
   trees.sort((a, b) => (a.type === 'pathfinder' ? 1 : -1) - (b.type === 'pathfinder' ? 1 : -1));
   trees.forEach((tree) => {
     const treeStyle = getTreeSize(safeLayer, tree.type);
-    drawSingleTree(tree.x, tree.y, treeStyle, safeLayer, tree.type, tree.glowPhase);
+    drawSingleTree(tree.x, tree.y, treeStyle, safeLayer, tree.type, tree.glowPhase, lvl, progression);
   });
 }
 
-function drawSingleTree(x, y, style, layer, type, glowPhase) {
+function drawSingleTree(x, y, style, layer, type, glowPhase, lvl, progression) {
   ctx.save();
   ctx.translate(x, y);
-  const progression = (layer - 1) / (CONFIG.FOREST.maxLayer - 1);
 
-  const initialTrunk = [58, 43, 33];
-  const finalTrunk = [108, 83, 67];
-  const initialCanopyDark = [30, 61, 30];
-  const finalCanopyDark = [74, 122, 74];
-  const initialCanopyLight = [43, 78, 43];
-  const finalCanopyLight = [90, 138, 90];
-
-  const trunkColor = `rgb(${Math.round(initialTrunk[0] - (initialTrunk[0] - finalTrunk[0]) * progression)},${Math.round(initialTrunk[1] - (initialTrunk[1] - finalTrunk[1]) * progression)},${Math.round(initialTrunk[2] - (initialTrunk[2] - finalTrunk[2]) * progression)})`;
-  const canopyColor2 = `rgb(${Math.round(initialCanopyDark[0] - (initialCanopyDark[0] - finalCanopyDark[0]) * progression)},${Math.round(initialCanopyDark[1] - (initialCanopyDark[1] - finalCanopyDark[1]) * progression)},${Math.round(initialCanopyDark[2] - (initialCanopyDark[2] - finalCanopyDark[2]) * progression)})`;
-  const canopyColor1 = `rgb(${Math.round(initialCanopyLight[0] - (initialCanopyLight[0] - finalCanopyLight[0]) * progression)},${Math.round(initialCanopyLight[1] - (initialCanopyLight[1] - finalCanopyLight[1]) * progression)},${Math.round(initialCanopyLight[2] - (initialCanopyLight[2] - finalCanopyLight[2]) * progression)})`;
+  const trunkColor = `rgb(${Math.round(lvl.trunkStart[0] + (lvl.trunkEnd[0] - lvl.trunkStart[0]) * progression)},${Math.round(lvl.trunkStart[1] + (lvl.trunkEnd[1] - lvl.trunkStart[1]) * progression)},${Math.round(lvl.trunkStart[2] + (lvl.trunkEnd[2] - lvl.trunkStart[2]) * progression)})`;
+  const canopyColor2 = `rgb(${Math.round(lvl.canopyDarkStart[0] + (lvl.canopyDarkEnd[0] - lvl.canopyDarkStart[0]) * progression)},${Math.round(lvl.canopyDarkStart[1] + (lvl.canopyDarkEnd[1] - lvl.canopyDarkStart[1]) * progression)},${Math.round(lvl.canopyDarkStart[2] + (lvl.canopyDarkEnd[2] - lvl.canopyDarkStart[2]) * progression)})`;
+  const canopyColor1 = `rgb(${Math.round(lvl.canopyLightStart[0] + (lvl.canopyLightEnd[0] - lvl.canopyLightStart[0]) * progression)},${Math.round(lvl.canopyLightStart[1] + (lvl.canopyLightEnd[1] - lvl.canopyLightStart[1]) * progression)},${Math.round(lvl.canopyLightStart[2] + (lvl.canopyLightEnd[2] - lvl.canopyLightStart[2]) * progression)})`;
 
   const pathfinderBaseColor = `rgba(${100 + 40 * progression}, ${120 + 60 * progression}, ${100 + 40 * progression}, 1)`;
   const pathfinderGlow = `rgba(${140 + 40 * progression}, ${180 + 40 * progression}, ${140 + 40 * progression}, ${0.25 + Math.sin(glowPhase + Date.now() / 450) * 0.2})`;
@@ -722,9 +766,9 @@ function handleWispCollision() {
         continue;
       }
       wisps.splice(i, 1);
-      score = Math.max(0, score - CONFIG.WISPS.damage);
+      score = Math.max(0, score - getCurrentLevelConfig().wispDamage);
       player.invulnerable = true;
-      player.invulnTimer = CONFIG.WISPS.invulnAfterHit;
+      player.invulnTimer = 1500;
       playWispHitSound();
       getGlitchTaunt();
       spawnFruitBurst(wisp.x, wisp.y, 'rgba(255, 50, 50, 0.8)');
@@ -739,12 +783,12 @@ function handleRiftCollision() {
   const dist = Math.hypot(player.x - rift.x, player.y - rift.y);
   if (dist < player.radius + rift.radius) {
     rift.sealed = true;
-    score += CONFIG.RIFTS.rewardPoints;
+    score += rift.reward;
     doubleFruitActive = true;
-    doubleFruitTimer = CONFIG.RIFTS.doubleFruitDuration;
+    doubleFruitTimer = CONFIG.RIFT_BASE.doubleFruitDuration;
     playRiftSealSound();
     spawnRiftSealBurst(rift.x, rift.y);
-    showDynamicMessage(`Rift sealed! +${CONFIG.RIFTS.rewardPoints} points. Double fruits!`, 3000);
+    showDynamicMessage(`Rift sealed! +${rift.reward} points. Double fruits!`, 3000);
 
     while (fruits.length < numFruits * 2) spawnFruit();
     updateScoreDisplay();
@@ -799,10 +843,21 @@ function handleFruitCollision() {
 }
 
 function updateScoreDisplay() {
+  const lvl = getCurrentLevelConfig();
   scoreDisplay.textContent = `Score: ${score} / ${CONFIG.FOREST.winningScore}`;
+  const levelNameDisplay = document.getElementById('levelNameDisplay');
+  if (levelNameDisplay) {
+    levelNameDisplay.textContent = lvl.name;
+    levelNameDisplay.style.color = ['#45f3ff', '#c084fc', '#ff6b6b'][currentLevel] || '#45f3ff';
+  }
 }
 
 function checkEnvironmentalTransformation() {
+  const newLevel = getLevelForScore(score);
+  if (newLevel > currentLevel) {
+    triggerLevelTransition(newLevel);
+  }
+
   let targetLayerBasedOnScore = Math.min(CONFIG.FOREST.maxLayer, Math.floor(score / CONFIG.FOREST.pointsPerLayer) + 1);
   if (score >= CONFIG.FOREST.winningScore) targetLayerBasedOnScore = CONFIG.FOREST.maxLayer;
   if (score < 0) targetLayerBasedOnScore = 1;
@@ -879,6 +934,21 @@ function gameLoop(timestamp) {
   const deltaTime = timestamp - (lastTimestamp || timestamp);
   lastTimestamp = timestamp;
 
+  if (levelTransition) {
+    levelTransition.timer -= deltaTime;
+    drawForest();
+    drawFruits();
+    drawRift();
+    drawWisps();
+    drawParticles();
+    drawPlayer();
+    if (levelTransition.timer <= 0) {
+      endLevelTransition();
+    }
+    requestId = requestAnimationFrame(gameLoop);
+    return;
+  }
+
   updatePlayerTimers(deltaTime);
 
   if (score < CONFIG.FOREST.winningScore) {
@@ -906,14 +976,18 @@ function gameLoop(timestamp) {
 
   wispSpawnTimer -= deltaTime;
   if (wispSpawnTimer <= 0) {
-    wispSpawnTimer = CONFIG.WISPS.spawnInterval - (currentForestLayer - 1) * 1000;
+    const lvl = getCurrentLevelConfig();
+    wispSpawnTimer = lvl.wispSpawnInterval + Math.random() * 3000;
     spawnWisp();
   }
 
   riftSpawnTimer -= deltaTime;
   if (riftSpawnTimer <= 0 && !rift) {
-    riftSpawnTimer = CONFIG.RIFTS.spawnInterval + Math.random() * 10000;
-    spawnRift();
+    const lvl = getCurrentLevelConfig();
+    if (lvl.riftsEnabled) {
+      riftSpawnTimer = (lvl.riftSpawnInterval || 35000) + Math.random() * 10000;
+      spawnRift();
+    }
   }
 
   if (rift && !rift.sealed) {
