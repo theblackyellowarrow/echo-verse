@@ -134,22 +134,21 @@ function typeCharacter() {
 function initGame(startingLevel = 0) {
   const lvl = CONFIG.LEVELS[startingLevel];
   score = lvl.scoreMin;
-  currentForestLayer = Math.floor(score / CONFIG.FOREST.pointsPerLayer) + 1;
+  currentForestLayer = Math.max(1, Math.floor(score / CONFIG.FOREST.pointsPerLayer) + 1);
   if (score >= CONFIG.FOREST.winningScore) currentForestLayer = CONFIG.FOREST.maxLayer;
-  if (currentForestLayer < 1) currentForestLayer = 1;
   currentLevel = startingLevel;
   levelTransition = null;
   messageShown = false;
   gameEnded = false;
   wisps = [];
-  wispSpawnTimer = 0;
+  wispSpawnTimer = lvl.wispSpawnInterval + 2000;
   rift = null;
-  riftSpawnTimer = 0;
+  riftSpawnTimer = lvl.riftsEnabled ? (lvl.riftSpawnInterval || 35000) : 999999;
   doubleFruitActive = false;
   doubleFruitTimer = 0;
   particles = [];
   aiChallengeTimer = CONFIG.AI_CHALLENGE.duration;
-  scoreAtChallengeStart = 0;
+  scoreAtChallengeStart = score;
 
   if (aiChallengeTimerDisplay) aiChallengeTimerDisplay.style.display = 'block';
   if (dashCooldownDisplay) dashCooldownDisplay.style.display = 'block';
@@ -713,9 +712,11 @@ function getTreeSize(layer, type = 'guardian') {
 function drawForest() {
   const lvl = getCurrentLevelConfig();
   const safeLayer = Math.max(1, Math.min(CONFIG.FOREST.maxLayer, currentForestLayer || 1));
-  const layersInLevel = (lvl.scoreMax - lvl.scoreMin) / CONFIG.FOREST.pointsPerLayer;
-  const layerInLevel = Math.max(1, Math.min(layersInLevel, safeLayer - (lvl.scoreMin / CONFIG.FOREST.pointsPerLayer) + 1));
-  const progression = (layerInLevel - 1) / (layersInLevel - 1);
+  const startLayer = Math.floor(lvl.scoreMin / CONFIG.FOREST.pointsPerLayer) + 1;
+  const endLayer = Math.min(CONFIG.FOREST.maxLayer, Math.floor(lvl.scoreMax / CONFIG.FOREST.pointsPerLayer) + 1);
+  const layersInLevel = endLayer - startLayer + 1;
+  const layerInLevel = Math.max(1, Math.min(layersInLevel, safeLayer - startLayer + 1));
+  const progression = layersInLevel > 1 ? (layerInLevel - 1) / (layersInLevel - 1) : 0;
   const r = Math.round(lvl.bgStart[0] + (lvl.bgEnd[0] - lvl.bgStart[0]) * progression);
   const g = Math.round(lvl.bgStart[1] + (lvl.bgEnd[1] - lvl.bgStart[1]) * progression);
   const b = Math.round(lvl.bgStart[2] + (lvl.bgEnd[2] - lvl.bgStart[2]) * progression);
@@ -923,6 +924,15 @@ function checkEnvironmentalTransformation() {
   const newLevel = getLevelForScore(score);
   if (newLevel > currentLevel) {
     triggerLevelTransition(newLevel);
+  } else if (newLevel < currentLevel) {
+    currentLevel = newLevel;
+    const lvl = getCurrentLevelConfig();
+    const levelNameDisplay = document.getElementById('levelNameDisplay');
+    if (levelNameDisplay) {
+      levelNameDisplay.textContent = lvl.name;
+      levelNameDisplay.style.color = ['#45f3ff', '#c084fc', '#ff6b6b'][currentLevel] || '#45f3ff';
+    }
+    updateAmbientSounds();
   }
 
   let targetLayerBasedOnScore = Math.min(CONFIG.FOREST.maxLayer, Math.floor(score / CONFIG.FOREST.pointsPerLayer) + 1);
