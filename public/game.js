@@ -131,10 +131,13 @@ function typeCharacter() {
   }
 }
 
-function initGame() {
-  score = 0;
-  currentForestLayer = 1;
-  currentLevel = 0;
+function initGame(startingLevel = 0) {
+  const lvl = CONFIG.LEVELS[startingLevel];
+  score = lvl.scoreMin;
+  currentForestLayer = Math.floor(score / CONFIG.FOREST.pointsPerLayer) + 1;
+  if (score >= CONFIG.FOREST.winningScore) currentForestLayer = CONFIG.FOREST.maxLayer;
+  if (currentForestLayer < 1) currentForestLayer = 1;
+  currentLevel = startingLevel;
   levelTransition = null;
   messageShown = false;
   gameEnded = false;
@@ -198,15 +201,48 @@ beginRestorationButton.addEventListener('click', () => {
   }, 500);
 });
 
-function startGameButtonHandler() {
+function showLevelSelect() {
+  fruitIntroContainer.classList.add('hidden');
+  fruitIntroContainer.classList.remove('visible');
+  startGameButton.classList.remove('visible');
+  startGameButton.classList.add('hidden');
+
+  const levelSelectScreen = document.getElementById('levelSelectScreen');
+  const levelCards = document.getElementById('levelCards');
+  if (!levelSelectScreen || !levelCards) return;
+
+  levelCards.innerHTML = '';
+  const colors = ['#45f3ff', '#c084fc', '#ff6b6b'];
+  const diffLabels = ['Easy', 'Medium', 'Hard'];
+  CONFIG.LEVELS.forEach((lvl, idx) => {
+    const card = document.createElement('div');
+    card.className = 'level-card';
+    card.innerHTML = `
+      <div class="lc-color-bar" style="background:${colors[idx]}"></div>
+      <div class="lc-name">${lvl.name}</div>
+      <div class="lc-sub">${lvl.subheader}</div>
+      <div class="lc-diff">${diffLabels[idx]} &bull; ${lvl.scoreMin}-${lvl.scoreMax} pts</div>
+    `;
+    card.addEventListener('click', () => startGameAtLevel(idx));
+    levelCards.appendChild(card);
+  });
+
+  levelSelectScreen.classList.remove('hidden');
+  if (soundsReadyForOnboarding && buttonAppearSound)
+    buttonAppearSound.triggerAttackRelease('D5', '4n', Tone.now() + 0.05);
+}
+
+function startGameAtLevel(levelIdx) {
+  const levelSelectScreen = document.getElementById('levelSelectScreen');
+  if (levelSelectScreen) levelSelectScreen.classList.add('hidden');
   onboardingScreen.classList.add('fade-out');
   initGameAudio().then(() => {
     gameStarted = true;
-    initGame();
+    initGame(levelIdx);
   }).catch((e) => {
     console.error('Error initializing game audio, starting game without it:', e);
     gameStarted = true;
-    initGame();
+    initGame(levelIdx);
   });
   setTimeout(() => {
     canvas.classList.add('visible');
@@ -214,7 +250,23 @@ function startGameButtonHandler() {
   }, 700);
 }
 
+function startGameButtonHandler() {
+  showLevelSelect();
+}
+
 startGameButton.addEventListener('click', startGameButtonHandler);
+
+const backFromLevelSelect = document.getElementById('backFromLevelSelect');
+if (backFromLevelSelect) {
+  backFromLevelSelect.addEventListener('click', () => {
+    const levelSelectScreen = document.getElementById('levelSelectScreen');
+    if (levelSelectScreen) levelSelectScreen.classList.add('hidden');
+    fruitIntroContainer.classList.remove('hidden');
+    fruitIntroContainer.classList.add('visible');
+    startGameButton.classList.remove('hidden');
+    startGameButton.classList.add('visible');
+  });
+}
 
 function getLevelForScore(s) {
   for (let i = CONFIG.LEVELS.length - 1; i >= 0; i--) {
@@ -267,7 +319,22 @@ restartGameButton.addEventListener('click', () => {
     ambientMusicLoop.stop(0); Tone.Transport.stop(); Tone.Transport.cancel(0);
   }
   stopSoundIntervals();
-  initGame();
+  gameEnded = false;
+  gameStarted = false;
+  messageShown = false;
+  canvas.classList.remove('visible');
+  uiOverlay.classList.remove('visible');
+  if (aiChallengeTimerDisplay) aiChallengeTimerDisplay.style.display = 'block';
+  if (dashCooldownDisplay) dashCooldownDisplay.style.display = 'block';
+  const levelOverlay = document.getElementById('levelTransitionOverlay');
+  if (levelOverlay) levelOverlay.classList.remove('visible');
+  initGameAudio().then(() => {
+    onboardingScreen.classList.remove('fade-out');
+    showLevelSelect();
+  }).catch(() => {
+    onboardingScreen.classList.remove('fade-out');
+    showLevelSelect();
+  });
 });
 
 function generateTrees() {
