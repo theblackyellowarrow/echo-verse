@@ -132,12 +132,15 @@ function typeCharacter() {
 }
 
 function initGame(startingLevel = 0) {
+  updateGameDimensions();
   const lvl = CONFIG.LEVELS[startingLevel];
   score = lvl.scoreMin;
   currentForestLayer = Math.max(1, Math.floor(score / CONFIG.FOREST.pointsPerLayer) + 1);
   if (score >= CONFIG.FOREST.winningScore) currentForestLayer = CONFIG.FOREST.maxLayer;
   currentLevel = startingLevel;
   levelTransition = null;
+  const levelOverlay = document.getElementById('levelTransitionOverlay');
+  if (levelOverlay) levelOverlay.classList.remove('visible');
   messageShown = false;
   gameEnded = false;
   wisps = [];
@@ -235,6 +238,11 @@ function startGameAtLevel(levelIdx) {
   const levelSelectScreen = document.getElementById('levelSelectScreen');
   if (levelSelectScreen) levelSelectScreen.classList.add('hidden');
   onboardingScreen.classList.add('fade-out');
+  canvas.classList.remove('visible');
+  uiOverlay.classList.remove('visible');
+  const levelOverlay = document.getElementById('levelTransitionOverlay');
+  if (levelOverlay) levelOverlay.classList.remove('visible');
+  updateGameDimensions();
   initGameAudio().then(() => {
     gameStarted = true;
     initGame(levelIdx);
@@ -1004,10 +1012,10 @@ let lastTimestamp = 0;
 
 function gameLoop(timestamp) {
   if (!gameStarted || gameEnded) {
-    if (requestId) cancelAnimationFrame(requestId);
-    requestId = null;
+    if (requestId) { cancelAnimationFrame(requestId); requestId = null; }
     return;
   }
+  try {
   const deltaTime = timestamp - (lastTimestamp || timestamp);
   lastTimestamp = timestamp;
 
@@ -1103,6 +1111,10 @@ function gameLoop(timestamp) {
   drawPlayer();
 
   requestId = requestAnimationFrame(gameLoop);
+  } catch (err) {
+    console.error('Game loop crash:', err);
+    requestId = requestAnimationFrame(gameLoop);
+  }
 }
 
 function skipOnboarding() {
