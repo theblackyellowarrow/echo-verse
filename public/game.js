@@ -71,6 +71,7 @@ let wispSpawnTimer = 0;
 
 let powerups = [];
 let powerupTimer = 0;
+let powerupHintShown = false;
 
 let rift = null;
 let riftSpawnTimer = 0;
@@ -154,6 +155,7 @@ function initGame(startingLevel = 0) {
   wispSpawnTimer = lvl.wispSpawnInterval + 2000;
   powerups = [];
   powerupTimer = CONFIG.POWERUPS.spawnInterval + 3000;
+  powerupHintShown = false;
   rift = null;
   riftSpawnTimer = lvl.riftsEnabled ? (lvl.riftSpawnInterval || 35000) : 999999;
   doubleFruitActive = false;
@@ -488,6 +490,10 @@ function spawnPowerup() {
       duration: def.duration,
       ...(def.multiplier ? { multiplier: def.multiplier } : {}),
     });
+    if (!powerupHintShown) {
+      powerupHintShown = true;
+      showDynamicMessage('Power-ups appear! S = Wisp Repellent, Z = Speed Boost. Touch to collect!', 5000);
+    }
   }
 }
 
@@ -728,23 +734,26 @@ function drawPowerups() {
   powerups.forEach((pw) => {
     ctx.save();
     const pulse = 1 + Math.sin(Date.now() / 350) * 0.15;
-    const r = 12 * pulse;
-    const gradient = ctx.createRadialGradient(pw.x, pw.y, r * 0.1, pw.x, pw.y, r * 1.3);
+    const r = 14 * pulse;
+    const gradient = ctx.createRadialGradient(pw.x, pw.y, r * 0.1, pw.x, pw.y, r * 1.4);
     gradient.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
-    gradient.addColorStop(0.4, pw.glow.replace('0.8', '1'));
+    gradient.addColorStop(0.3, pw.glow.replace('0.8', '1'));
     gradient.addColorStop(0.7, pw.glow);
     gradient.addColorStop(1, pw.glow.replace('0.8', '0'));
     ctx.fillStyle = gradient;
     ctx.shadowColor = pw.glow.replace('0.8', '0.9');
-    ctx.shadowBlur = 18;
+    ctx.shadowBlur = 20;
     ctx.beginPath();
     ctx.arc(pw.x, pw.y, r, 0, Math.PI * 2);
     ctx.fill();
     ctx.shadowBlur = 0;
-    ctx.fillStyle = pw.colorHex;
-    ctx.font = '9px "Press Start 2P"';
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 11px "Press Start 2P"';
     ctx.textAlign = 'center';
-    ctx.fillText(pw.symbol || '?', pw.x, pw.y + 3);
+    ctx.fillText(pw.symbol, pw.x, pw.y + 4);
+    ctx.font = '7px "Press Start 2P"';
+    ctx.fillStyle = pw.colorHex;
+    ctx.fillText(pw.name, pw.x, pw.y + r + 12);
     ctx.restore();
   });
 }
@@ -915,8 +924,45 @@ function updateWisps(dt) {
     const dy = player.y - wisp.y;
     const dist = Math.hypot(dx, dy);
     if (dist > 0) {
-      wisp.x += (dx / dist) * wisp.speed * (dt / 16.7);
-      wisp.y += (dy / dist) * wisp.speed * (dt / 16.7);
+      const step = wisp.speed * (dt / 16.7);
+      const nx = wisp.x + (dx / dist) * step;
+      const ny = wisp.y + (dy / dist) * step;
+
+      let blocked = false;
+      for (const tree of trees) {
+        if (tree.type !== 'guardian') continue;
+        const treeStyle = getTreeSize(currentForestLayer || 1, tree.type);
+        const treeR = Math.max(treeStyle.width, treeStyle.height) / 3.1;
+        if (Math.hypot(nx - tree.x, ny - tree.y) < wisp.radius + treeR) {
+          blocked = true;
+          break;
+        }
+      }
+
+      if (blocked) {
+        const angles = [0.6, -0.6, 1.0, -1.0, 0.3, -0.3];
+        for (const angle of angles) {
+          const cos = Math.cos(angle);
+          const sin = Math.sin(angle);
+          const ax = wisp.x + (dx / dist * cos - dy / dist * sin) * step;
+          const ay = wisp.y + (dx / dist * sin + dy / dist * cos) * step;
+          let clear = true;
+          for (const tree of trees) {
+            if (tree.type !== 'guardian') continue;
+            const ts = getTreeSize(currentForestLayer || 1, tree.type);
+            const tr = Math.max(ts.width, ts.height) / 3.1;
+            if (Math.hypot(ax - tree.x, ay - tree.y) < wisp.radius + tr) { clear = false; break; }
+          }
+          if (clear) {
+            wisp.x = ax;
+            wisp.y = ay;
+            break;
+          }
+        }
+      } else {
+        wisp.x = nx;
+        wisp.y = ny;
+      }
     }
     if (Math.random() < 0.15) spawnWispTrail(wisp);
   });

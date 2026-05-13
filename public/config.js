@@ -146,9 +146,11 @@ const CONFIG = {
       'It\'s now just pixelated echoes of what it once was.',
       'You are a Restorer. You can fix this place.',
       'Find the glowing Resonance Fruits to heal the EchoVerse.',
-      'Glowing trees, the Pathfinder Glyphs, show safe paths.',
+      'Glowing Pathfinder Glyph trees show safe routes.',
+      'Dark Guardian Trees block both YOU and Corruption Wisps!',
       'Use WASD or Arrow Keys to move. Press SPACE to Echo Dash!',
-      'Beware: Corruption Wisps hunt you. Seal Resonance Rifts!',
+      'Dash through Wisps to destroy them for +5 points.',
+      'Collect power-ups: [S] Repellent destroys Wisps, [Z] Speed boosts you!',
     ],
   },
 
