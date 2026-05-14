@@ -1291,29 +1291,6 @@ function gameLoop(timestamp) {
   }
 }
 
-function skipOnboarding() {
-  currentParagraphIndex = onboardingLines.length;
-  const cursor = typewriterContainer.querySelector('.typewriter-cursor');
-  if (cursor) cursor.remove();
-  typewriterContainer.innerHTML = '';
-  onboardingLines.forEach((line, i) => {
-    const p = document.createElement('p');
-    p.textContent = line;
-    p.classList.add('visible-line');
-    if (i < onboardingLines.length - 1) p.classList.add('dimmed-line');
-    typewriterContainer.appendChild(p);
-  });
-  beginRestorationButton.classList.add('visible');
-  if (soundsReadyForOnboarding && buttonAppearSound)
-    buttonAppearSound.triggerAttackRelease('C5', '4n', Tone.now() + 0.1);
-}
-
-const skipOnboardingButton = document.getElementById('skipOnboardingButton');
-skipOnboardingButton.addEventListener('click', (e) => {
-  e.stopPropagation();
-  skipOnboarding();
-});
-
 onboardingScreen.addEventListener('click', async function initialUserGesture() {
   onboardingScreen.removeEventListener('click', initialUserGesture);
   onboardingScreen.classList.add('no-cursor');
