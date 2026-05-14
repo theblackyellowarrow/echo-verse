@@ -15,17 +15,23 @@ const uiOverlay = document.getElementById('uiOverlay');
 const dynamicMessageOverlay = document.getElementById('dynamicMessageOverlay');
 
 const INFO_BAND_HEIGHT = CONFIG.INFO_BAND_HEIGHT;
+const GAME_DESIGN_WIDTH = 800;
+const GAME_DESIGN_HEIGHT = 550;
 const gameContainer = document.getElementById('gameContainer');
-let gameWidth = CONFIG.GAME_WIDTH;
-let gameHeight = CONFIG.GAME_HEIGHT;
+let gameWidth = GAME_DESIGN_WIDTH;
+let gameHeight = GAME_DESIGN_HEIGHT;
+let gameScale = 1;
 
 function updateGameDimensions() {
-  const containerWidth = gameContainer.offsetWidth;
-  gameWidth = containerWidth > 0 ? containerWidth : CONFIG.GAME_WIDTH;
-  const containerHeight = gameContainer.offsetHeight;
-  gameHeight = containerHeight > INFO_BAND_HEIGHT ? containerHeight - INFO_BAND_HEIGHT : CONFIG.GAME_HEIGHT;
+  const containerWidth = gameContainer.clientWidth || GAME_DESIGN_WIDTH;
+  const totalRatio = GAME_DESIGN_WIDTH / (GAME_DESIGN_HEIGHT + INFO_BAND_HEIGHT);
+  gameContainer.style.aspectRatio = totalRatio.toString();
+  gameWidth = GAME_DESIGN_WIDTH;
+  gameHeight = GAME_DESIGN_HEIGHT;
   canvas.width = gameWidth;
   canvas.height = gameHeight;
+  const rect = canvas.getBoundingClientRect();
+  gameScale = rect.width > 0 ? gameWidth / rect.width : 1;
 }
 
 window.addEventListener('DOMContentLoaded', updateGameDimensions);
