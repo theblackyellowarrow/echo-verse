@@ -345,6 +345,17 @@ canvas.visible { opacity: 1; }
   50% { opacity: 1; transform: scale(1.06); }
 }
 
+#poweredBy {
+  position: absolute;
+  bottom: 12px;
+  font-family: "Press Start 2P", "Courier New", monospace;
+  font-size: 7px;
+  color: var(--text-muted);
+  opacity: 0.45;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
 #typewriterContainer,
 #fruitIntroContainer {
   margin-bottom: 30px;
