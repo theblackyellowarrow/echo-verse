@@ -93,56 +93,22 @@ const loreFragments = CONFIG.LORE;
 const aiTaunts = CONFIG.AI_TAUNTS;
 const onboardingLines = CONFIG.ONBOARDING.lines;
 
-let currentParagraphIndex = 0;
-let currentCharIndex = 0;
-const typingSpeed = CONFIG.ONBOARDING.typingSpeed;
-const interLinePause = CONFIG.ONBOARDING.interLinePause;
 const preButtonPause = CONFIG.ONBOARDING.preButtonPause;
 
-function typeCharacter() {
-  if (currentParagraphIndex >= onboardingLines.length) {
-    const cursor = typewriterContainer.querySelector('.typewriter-cursor');
-    if (cursor) cursor.remove();
-    setTimeout(() => {
-      beginRestorationButton.classList.add('visible');
-      if (soundsReadyForOnboarding && buttonAppearSound)
-        buttonAppearSound.triggerAttackRelease('C5', '4n', Tone.now() + 0.1);
-    }, preButtonPause);
-    return;
-  }
-  let p = typewriterContainer.children?.[currentParagraphIndex];
-  if (!p) {
-    p = document.createElement('p');
-    typewriterContainer.appendChild(p);
-  }
-  const textToType = onboardingLines?.[currentParagraphIndex];
-  if (currentCharIndex === 0) {
-    p.innerHTML = '';
+function showAllOnboardingLines() {
+  typewriterContainer.innerHTML = '';
+  onboardingLines.forEach((line, i) => {
+    const p = document.createElement('p');
+    p.textContent = line;
     p.classList.add('visible-line');
-    for (let i = 0; i < currentParagraphIndex; i++) {
-      if (typewriterContainer.children?.[i]) typewriterContainer.children?.[i].classList.add('dimmed-line');
-    }
-  }
-  const currentTextContent = p.textContent?.replace(/.$/, '');
-  if (currentCharIndex < textToType?.length) {
-    p.textContent = currentTextContent + textToType?.[currentCharIndex];
-    const cursorSpan = document.createElement('span');
-    cursorSpan.className = 'typewriter-cursor';
-    p.appendChild(cursorSpan);
-    if (soundsReadyForOnboarding && typeCharSound && currentCharIndex % 2 === 0) {
-      try { typeCharSound.triggerAttackRelease('G#5', '128n', Tone.now() + 0.001); } catch (e) {}
-    }
-    currentCharIndex++;
-    setTimeout(typeCharacter, typingSpeed);
-  } else {
-    p.textContent = textToType;
-    if (soundsReadyForOnboarding && lineEndSound) {
-      try { lineEndSound.triggerAttackRelease('E5', '16n', Tone.now() + 0.01); } catch (e) {}
-    }
-    currentParagraphIndex++;
-    currentCharIndex = 0;
-    setTimeout(typeCharacter, interLinePause);
-  }
+    if (i > 0) p.classList.add('dimmed-line');
+    typewriterContainer.appendChild(p);
+  });
+  setTimeout(() => {
+    beginRestorationButton.classList.add('visible');
+    if (soundsReadyForOnboarding && buttonAppearSound)
+      buttonAppearSound.triggerAttackRelease('C5', '4n', Tone.now() + 0.1);
+  }, preButtonPause);
 }
 
 function initGame(startingLevel = 0) {
@@ -1304,5 +1270,5 @@ onboardingScreen.addEventListener('click', async function initialUserGesture() {
   onboardingScreen.removeEventListener('click', initialUserGesture);
   onboardingScreen.classList.add('no-cursor');
   await initOnboardingAudio();
-  typeCharacter();
+  showAllOnboardingLines();
 }, { once: true });

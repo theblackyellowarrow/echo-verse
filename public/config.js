@@ -140,7 +140,7 @@ const CONFIG = {
   ONBOARDING: {
     typingSpeed: 22,
     interLinePause: 200,
-    preButtonPause: 300,
+    preButtonPause: 150,
     lines: [
       'An AI called Elon has broken this digital forest.',
       'It\'s now just pixelated echoes of what it once was.',
