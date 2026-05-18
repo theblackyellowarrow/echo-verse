@@ -88,7 +88,9 @@ body::after {
     0 18px 45px rgba(0, 0, 0, 0.6);
   background: linear-gradient(180deg, var(--pixel-panel), var(--pixel-panel-dark));
   width: 100%;
+  min-width: 320px;
   max-width: 900px;
+  aspect-ratio: 4 / 3;
   display: flex;
   flex-direction: column;
   border-radius: 0;
@@ -129,31 +131,33 @@ body::after {
 
 #gameHeader {
   width: 100%;
-  height: 50px;
+  min-height: 50px;
   background: linear-gradient(120deg, #11182b, #1a1220);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 20px;
+  padding: 6px 16px 8px;
   box-sizing: border-box;
   border-bottom: 4px solid var(--pixel-border);
   z-index: 5;
+  gap: 12px;
 }
 
 .headerColumn {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
 }
 .headerColumn.headerRight {
   align-items: flex-end;
+  gap: 2px;
 }
 
 canvas {
   display: block;
   background-color: transparent;
-  width: 100%;
-  height: calc(100% - 50px);
+  flex: 1;
+  min-height: 0;
   opacity: 0;
   transition: opacity 1.2s ease-in 0.5s;
   position: relative;
@@ -165,8 +169,8 @@ canvas.visible { opacity: 1; }
   position: absolute;
   top: 50px;
   left: 0;
-  width: 100%;
-  height: calc(100% - 50px);
+  right: 0;
+  bottom: 0;
   pointer-events: none;
   opacity: 0;
   transition: opacity 1.2s ease-in 0.5s;
@@ -175,40 +179,44 @@ canvas.visible { opacity: 1; }
 #uiOverlay.visible { opacity: 1; }
 
 #levelNameDisplay {
-  font-size: 10px;
-  line-height: 1.5;
+  font-size: 9px;
+  line-height: 1.6;
   color: var(--accent-cyan);
   text-shadow: 0 0 10px rgba(69, 243, 255, 0.4);
   padding: 0;
+  margin: 0;
   text-transform: uppercase;
   letter-spacing: 1px;
 }
 
 #scoreDisplay {
-  font-size: 16px;
-  line-height: 1.5;
+  font-size: 14px;
+  line-height: 1.6;
   color: var(--accent-gold);
   text-shadow: 0 0 12px rgba(255, 216, 107, 0.45);
   padding: 0;
+  margin: 0;
   text-transform: uppercase;
 }
 
 #aiChallengeTimerDisplay {
-  font-size: 11px;
-  line-height: 1.5;
+  font-size: 10px;
+  line-height: 1.6;
   color: #ff7b65;
   text-shadow: 0 0 12px rgba(255, 123, 101, 0.45);
   padding: 0;
+  margin: 0;
   display: block;
   text-transform: uppercase;
 }
 
 #dashCooldownDisplay {
-  font-size: 11px;
-  line-height: 1.5;
+  font-size: 10px;
+  line-height: 1.6;
   color: var(--accent-cyan);
   text-shadow: 0 0 12px rgba(69, 243, 255, 0.45);
   padding: 0;
+  margin: 0;
   display: block;
   text-transform: uppercase;
 }

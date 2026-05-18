@@ -23,9 +23,6 @@ let gameHeight = GAME_DESIGN_HEIGHT;
 let gameScale = 1;
 
 function updateGameDimensions() {
-  const containerWidth = gameContainer.clientWidth || GAME_DESIGN_WIDTH;
-  const totalRatio = GAME_DESIGN_WIDTH / (GAME_DESIGN_HEIGHT + INFO_BAND_HEIGHT);
-  gameContainer.style.aspectRatio = totalRatio.toString();
   gameWidth = GAME_DESIGN_WIDTH;
   gameHeight = GAME_DESIGN_HEIGHT;
   canvas.width = gameWidth;
