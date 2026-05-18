@@ -1266,6 +1266,10 @@ function gameLoop(timestamp) {
 onboardingScreen.addEventListener('click', async function initialUserGesture() {
   onboardingScreen.removeEventListener('click', initialUserGesture);
   onboardingScreen.classList.add('no-cursor');
+  const clickToEnter = document.getElementById('clickToEnter');
+  if (clickToEnter) clickToEnter.classList.add('fade-out-click');
+  const title = onboardingScreen.querySelector('h1');
+  if (title) title.classList.add('phase2');
   await initOnboardingAudio();
-  showAllOnboardingLines();
+  setTimeout(() => showAllOnboardingLines(), 400);
 }, { once: true });
