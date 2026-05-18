@@ -1,7 +1,7 @@
 const CONFIG = {
   INFO_BAND_HEIGHT: 50,
-  GAME_WIDTH: 800,
-  GAME_HEIGHT: 550,
+  GAME_WIDTH: 960,
+  GAME_HEIGHT: 540,
 
   PLAYER: {
     radius: 10,

@@ -15,8 +15,8 @@ const uiOverlay = document.getElementById('uiOverlay');
 const dynamicMessageOverlay = document.getElementById('dynamicMessageOverlay');
 
 const INFO_BAND_HEIGHT = CONFIG.INFO_BAND_HEIGHT;
-const GAME_DESIGN_WIDTH = 800;
-const GAME_DESIGN_HEIGHT = 550;
+const GAME_DESIGN_WIDTH = 960;
+const GAME_DESIGN_HEIGHT = 540;
 const gameContainer = document.getElementById('gameContainer');
 let gameWidth = GAME_DESIGN_WIDTH;
 let gameHeight = GAME_DESIGN_HEIGHT;
