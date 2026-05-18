@@ -521,10 +521,12 @@ function spawnRift() {
     attempts++;
   } while (!valid && attempts < 100);
   if (valid) {
+    const riftDuration = lvl.riftDuration || 15000;
     rift = {
       x: rx, y: ry,
       radius: CONFIG.RIFT_BASE.radius,
-      timer: lvl.riftDuration || CONFIG.RIFT_BASE.doubleFruitDuration,
+      timer: riftDuration,
+      initialTimer: riftDuration,
       sealed: false,
       phase: 0,
       reward: lvl.riftReward || 25,
@@ -769,7 +771,7 @@ function drawRift() {
   ctx.save();
   const pulse = 1 + Math.sin(Date.now() / 400 + rift.phase) * 0.15;
   const r = rift.radius * pulse;
-  const urgency = 1 - rift.timer / CONFIG.RIFTS.duration;
+  const urgency = rift.initialTimer > 0 ? 1 - rift.timer / rift.initialTimer : 0;
 
   const gradient = ctx.createRadialGradient(rift.x, rift.y, r * 0.1, rift.x, rift.y, r * 1.3);
   gradient.addColorStop(0, 'rgba(69, 243, 255, 0.8)');
@@ -970,7 +972,7 @@ function updateWisps(dt) {
         wisp.y = ny;
       }
     }
-    if (Math.random() < 0.15) spawnWispTrail(wisp);
+    if (Math.random() < 0.04) spawnWispTrail(wisp);
   });
 }
 
@@ -1197,6 +1199,7 @@ function gameLoop(timestamp) {
     drawFruits();
     drawRift();
     drawWisps();
+    drawPowerups();
     drawParticles();
     drawPlayer();
     if (levelTransition.timer <= 0) {
